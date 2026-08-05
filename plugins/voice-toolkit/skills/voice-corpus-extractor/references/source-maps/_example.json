@@ -1,0 +1,7 @@
+{
+  "_comment": "Filename -> citation label. Match by basename with or without extension. One map per project; load only the matching one. The entries below cover all three supported formats.",
+  "ep01": "Series title S1E01 \u2014 Episode Name",
+  "ep02.txt": "Series title S1E02 \u2014 Episode Name",
+  "hamlet_q2": "Hamlet, Second Quarto (1604)",
+  "importance_act_01": "The Importance of Being Earnest, act 1"
+}

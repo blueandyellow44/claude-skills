@@ -1,0 +1,7 @@
+{
+  "name": "voice-toolkit",
+  "description": "Capture a writing voice from a corpus and reproduce it in drafts.",
+  "version": "0.1.0",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}

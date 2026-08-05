@@ -1,0 +1,29 @@
+{
+  "name": "sheahan-skills",
+  "owner": {
+    "name": "Max Sheahan",
+    "url": "https://maxsheahan.com"
+  },
+  "plugins": [
+    {
+      "name": "skill-toolkit",
+      "source": "./plugins/skill-toolkit",
+      "description": "Interview a fuzzy idea into a concrete plan, and score a Claude skill against its design spec.",
+      "version": "0.1.0",
+      "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+      "license": "MIT",
+      "category": "development",
+      "keywords": ["skills", "authoring", "review", "claude-code"]
+    },
+    {
+      "name": "voice-toolkit",
+      "source": "./plugins/voice-toolkit",
+      "description": "Capture a writing voice from a corpus and reproduce it in drafts.",
+      "version": "0.1.0",
+      "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+      "license": "MIT",
+      "category": "writing",
+      "keywords": ["voice", "writing", "style", "profile"]
+    }
+  ]
+}

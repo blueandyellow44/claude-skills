@@ -1,0 +1,7 @@
+{
+  "name": "skill-toolkit",
+  "description": "Interview a fuzzy idea into a concrete plan, and score a Claude skill against its design spec.",
+  "version": "0.1.0",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}
