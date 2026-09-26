@@ -6,24 +6,58 @@
   },
   "plugins": [
     {
-      "name": "skill-toolkit",
-      "source": "./plugins/skill-toolkit",
-      "description": "Interview a fuzzy idea into a concrete plan, and score a Claude skill against its design spec.",
-      "version": "0.1.0",
-      "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
-      "license": "MIT",
-      "category": "development",
-      "keywords": ["skills", "authoring", "review", "claude-code"]
-    },
-    {
       "name": "voice-toolkit",
       "source": "./plugins/voice-toolkit",
       "description": "Capture a writing voice from a corpus and reproduce it in drafts.",
       "version": "0.1.0",
-      "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
       "license": "MIT",
       "category": "writing",
-      "keywords": ["voice", "writing", "style", "profile"]
+      "keywords": [
+        "voice",
+        "writing",
+        "style",
+        "profile"
+      ]
+    },
+    {
+      "name": "writing-toolkit",
+      "source": "./plugins/writing-toolkit",
+      "description": "Critique a nonfiction draft for the tells that make competent prose read as generated.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "writing",
+      "keywords": [
+        "writing",
+        "editing",
+        "critique",
+        "nonfiction"
+      ]
+    },
+    {
+      "name": "document-toolkit",
+      "source": "./plugins/document-toolkit",
+      "description": "Research a person into a sourced PDF brief, and lay out documents that look designed, not generated.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "pdf",
+        "research",
+        "design",
+        "documents"
+      ]
     }
   ]
 }

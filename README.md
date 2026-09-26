@@ -5,22 +5,21 @@ Skills I use in Claude Code and Claude Cowork, packaged as an installable market
 ## Install
 
     /plugin marketplace add blueandyellow44/claude-skills
-    /plugin install skill-toolkit@sheahan-skills
+    /plugin install writing-toolkit@sheahan-skills
 
-Then run a skill. Plugin skills are namespaced by their plugin, so `skill-judge` becomes `/skill-toolkit:skill-judge`.
+Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic` becomes `/writing-toolkit:draft-critic`.
 
 ## What is inside
 
 | Plugin | Skills | For |
 | --- | --- | --- |
-| `skill-toolkit` | `process-interviewer`, `skill-judge` | Planning a build, and reviewing Claude skills |
+| `writing-toolkit` | `draft-critic` | Finding what makes a nonfiction draft read as generated |
 | `voice-toolkit` | `voice-corpus-extractor`, `voice-profile-builder`, `voice-profile-iteration` | Capturing and reproducing a writing voice |
+| `document-toolkit` | `dossier`, `polished-pdf` | Researching a person into a brief, and laying out designed PDFs |
 
-### skill-toolkit
+### writing-toolkit
 
-`process-interviewer` refuses to let you start building until the plan is unambiguous. It interviews you across four phases, hunts the gaps you did not know were there, and stress-tests the plan you thought was finished. Use it before anything complex, especially when you feel confident.
-
-`skill-judge` scores a `SKILL.md` against eight design dimensions on a 120-point scale and returns a grade, an expert-to-activation knowledge ratio, an anti-pattern diagnosis, and ranked fixes. It judges; it does not rewrite.
+`draft-critic` reads a newsletter, essay, post, or memo and finds the tells: the sentence that explains what the example already showed, the abstraction standing where a specific belongs, the rhythm that never changes, the paragraphs that keep landing on a neat verdict. A stdlib Python script counts what can be counted first, then the skill grades six dimensions and returns a quoted, line-by-line flag list. It never rewrites, and it never invents an example to make a line more concrete.
 
 ### voice-toolkit
 
@@ -33,6 +32,12 @@ Three stages, in order.
 `voice-profile-iteration` hardens an existing profile by writing one original example per register, having you grade each, and iterating until the set locks. It proves the profile generates the voice rather than merely describing it.
 
 The design rule underneath all three is that nothing grades its own output. The extractor counts, the builder interprets, and a human closes the calibration gate.
+
+### document-toolkit
+
+`dossier` researches a real person before a meeting, interview, or sales call and builds a short PDF brief in their organization's colors. Every fact carries its source, single-source claims are flagged, and thin results are reported as thin rather than padded.
+
+`polished-pdf` lays out reports, letters, and planning documents as HTML and renders them to PDF through headless Chrome. It can match an organization's brand from its site or brand guide, or offer directions from an aesthetic library, and it checks every rendered page before handing the file over. `dossier` uses its renderer.
 
 ## Notes
 
