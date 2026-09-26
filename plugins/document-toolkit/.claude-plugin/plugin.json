@@ -1,0 +1,7 @@
+{
+  "name": "document-toolkit",
+  "description": "Research a person into a sourced PDF brief, and lay out documents that look designed, not generated.",
+  "version": "0.1.0",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}
