@@ -1,0 +1,7 @@
+{
+  "name": "writing-toolkit",
+  "description": "Critique a nonfiction draft for the tells that make competent prose read as generated: over-explanation, dead lines, abstraction, flat rhythm, and verdict-shaped landings.",
+  "version": "0.1.0",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}
