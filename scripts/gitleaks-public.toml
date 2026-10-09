@@ -1,0 +1,8 @@
+# Default gitleaks rules, plus the Secure Launch test fixtures, which plant
+# fake key-shaped strings on purpose to prove the detectors fire.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Secure Launch planted test fixtures"
+paths = ['''plugins/secure-[a-z-]+/tests/''']

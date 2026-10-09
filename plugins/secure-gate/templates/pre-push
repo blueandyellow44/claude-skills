@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# secure-launch pre-push hook. Link it (on the owner's word, it is a standing change):
+#   ln -s ../../.secure-launch/pre-push .git/hooks/pre-push
+# Runs the ledger into a temp folder (never into the repo) and the gate.
+# Skip once, visibly: SECURE_LAUNCH_SKIP=1 git push
+set -uo pipefail
+root="$(git rev-parse --show-toplevel)"
+if [ "${SECURE_LAUNCH_SKIP:-}" = "1" ]; then
+  echo "secure-launch pre-push: SKIPPED by SECURE_LAUNCH_SKIP=1 (nothing was checked)" >&2
+  exit 0
+fi
+out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
+python3 "$root/.secure-launch/secure-core/scripts/secure_launch.py" "$root" --out "$out" >/dev/null
+tests=()
+[ -f "$root/security/gate.json" ] && tests=(--tests-from security/gate.json)
+python3 "$root/.secure-launch/secure-gate/scripts/gate.py" "$out/findings.json" --repo "$root" ${tests[@]+"${tests[@]}"} || {
+  echo "secure-launch pre-push: push refused. Full ledger: run secure_launch.py with --out to keep it." >&2
+  exit 1
+}

@@ -1,0 +1,5 @@
+# The suite's own gitleaks config: the built-in rules, nothing from the repo.
+# Passed with -c on every scan so a repo's .gitleaks.toml cannot narrow it
+# (Phase 5 audit, 2026-10-08).
+[extend]
+useDefault = true

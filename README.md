@@ -16,6 +16,12 @@ Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic
 | `writing-toolkit` | `draft-critic` | Finding what makes a nonfiction draft read as generated |
 | `voice-toolkit` | `voice-corpus-extractor`, `voice-profile-builder`, `voice-profile-iteration` | Capturing and reproducing a writing voice |
 | `document-toolkit` | `dossier`, `polished-pdf` | Researching a person into a brief, and laying out designed PDFs |
+| `secure-core` | `secure-launch`, `security-inventory`, `launch-security-audit` | Mapping a repo's attack surface and running the whole security suite into one ledger |
+| `secure-secrets` | `secret-scan`, `transcript-secret-guard`, `secret-rotation` | Keeping key values out of repos and saved sessions, and rotating them |
+| `secure-supply-chain` | `dependency-audit`, `built-code-load-check` | Dependency risk without automatic upgrades |
+| `secure-app` | `asvs-lite`, `abuse-and-spend`, `outbound-fetch-guard`, `mutation-proven-tests` | App-layer holes, open proxies, and paid APIs with no spending cap |
+| `secure-platform` | `cloudflare-pages-workers`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
+| `secure-gate` | `secure-gate` | Refusing a launch while any check is failing or unknown |
 
 ### writing-toolkit
 
@@ -38,6 +44,18 @@ The design rule underneath all three is that nothing grades its own output. The 
 `dossier` researches a real person before a meeting, interview, or sales call and builds a short PDF brief in their organization's colors. Every fact carries its source, single-source claims are flagged, and thin results are reported as thin rather than padded.
 
 `polished-pdf` lays out reports, letters, and planning documents as HTML and renders them to PDF through headless Chrome. It can match an organization's brand from its site or brand guide, or offer directions from an aesthetic library, and it checks every rendered page before handing the file over. `dossier` uses its renderer.
+
+### Secure Launch (six plugins)
+
+A security pass to run before a site goes live. `secure-core` is the front door and every other `secure-*` plugin needs it, so install it first:
+
+    /plugin install secure-core@sheahan-skills
+
+Then add the plugins for what you ship. `/secure-launch` maps the attack surface, runs every check that applies, and writes one findings ledger. Each check reports PASS, FAIL, or UNKNOWN with its evidence. UNKNOWN is never folded into a pass: it means the check could not run, and the ledger says why. Every check has been seen to FAIL on a planted bad case before it is allowed to PASS, and the scripts never print a secret value.
+
+`secure-gate` turns the ledger into a gate (a GitHub Actions workflow, a deploy-script check, or a pre-push hook) that refuses while anything is failing, or unknown and not accepted by the owner with a reason and a date.
+
+Each plugin carries its own tests: `bash plugins/<plugin>/tests/run_tests.sh`. The checks use `gitleaks` and `npm` where they need them and report UNKNOWN when either is missing.
 
 ## Notes
 

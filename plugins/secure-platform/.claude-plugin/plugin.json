@@ -1,0 +1,6 @@
+{
+  "name": "secure-platform",
+  "version": "0.2.4",
+  "author": { "name": "Max Sheahan" },
+  "description": "One adapter per supported platform, each stating what it checks and what it cannot see: Cloudflare Pages and Workers (headers on every path, no secrets in [vars], previews off production data, edge hardening), Next.js on OpenNext (server actions, NEXT_PUBLIC_ secrets, static-export headers), Fly and Supabase (RLS, service-role key, [env] secrets, exposed ports), Google Apps Script (web app access, scopes, keys in code) and Railway (environment dumps, count-only variable reads). Requires secure-core."
+}

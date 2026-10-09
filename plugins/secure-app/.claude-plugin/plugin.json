@@ -1,0 +1,6 @@
+{
+  "name": "secure-app",
+  "version": "0.2.4",
+  "author": { "name": "Max Sheahan" },
+  "description": "App-layer security for your builds: ASVS-lite checks (credentialed CORS, stack traces in responses, debug routes, sign-out that only clears the browser, object writes without an ownership reference), outbound-fetch guard against SSRF, abuse and spend (uncapped paid APIs, unset caps that mean unlimited, open proxies, per-client ceilings, caller-set LLM params), and tests proven by removing each protection. Requires secure-core."
+}
