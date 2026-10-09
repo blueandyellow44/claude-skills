@@ -1,0 +1,38 @@
+{
+  "description": "Piece gates for the map repo named by CITY_WALKS_REPO. Tripwires on the common paths, not containment: a command or edit that names a sprite needs a recent object record; a reply that calls a piece fixed needs review evidence bound to the sprite on disk. Silent outside that repo, and everywhere when CITY_WALKS_REPO is unset. Limits are listed at the top of piece_gate.py. site_guard.py blocks a `wrangler pages deploy` from the wrong branch, or of a build made for another site.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/piece_gate.py\" pre",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/site_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/piece_gate.py\" stop",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

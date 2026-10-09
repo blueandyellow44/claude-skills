@@ -1,0 +1,8 @@
+{
+  "_note": "Pieces the owner has approved by name. The pipeline refuses to redraw or re-key them without the owner's word in this session. Add a row only from the owner's own words, with the commit.",
+  "ferry-building": {
+    "approved": "c3b44f7 (2026-09-22), 54 degree axis, sprite sha256 858302e3...",
+    "note": "Approved by name as exactly right (2026-10-03).",
+    "restore": "git show c3b44f7:public/images/sprites/sf/ferry-building.png; lies at the MAP's angle, exempt from the camera check"
+  }
+}

@@ -22,6 +22,7 @@ Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic
 | `secure-app` | `asvs-lite`, `abuse-and-spend`, `outbound-fetch-guard`, `mutation-proven-tests` | App-layer holes, open proxies, and paid APIs with no spending cap |
 | `secure-platform` | `cloudflare-pages-workers`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
 | `secure-gate` | `secure-gate` | Refusing a launch while any check is failing or unknown |
+| `city-walks-workflow` | 15 skills, from `landmark-piece` to `dual-site-deploy` | The working kit behind the illustrated Wally Walks map |
 
 ### writing-toolkit
 
@@ -56,6 +57,12 @@ Then add the plugins for what you ship. `/secure-launch` maps the attack surface
 `secure-gate` turns the ledger into a gate (a GitHub Actions workflow, a deploy-script check, or a pre-push hook) that refuses while anything is failing, or unknown and not accepted by the owner with a reason and a date.
 
 Each plugin carries its own tests: `bash plugins/<plugin>/tests/run_tests.sh`. The checks use `gitleaks` and `npm` where they need them and report UNKNOWN when either is missing.
+
+### city-walks-workflow
+
+The skills behind [wallywalks.app](https://wallywalks.app), an illustrated walking-tour map. They cover drawing a landmark piece from its survey, reviewing each piece against evidence before it lands, drawing a real person as a sprite, walk cycles and walker motion, repairing and preflighting the map, a preview deploy, deploying two sites from their own branches, a Google sign-in checklist for Pages, keeping one shared Chrome, and setting up a new city. Two hooks act as tripwires on map pieces and on deploys.
+
+They are written for that app's layout, so most of them are a pattern to adapt rather than a drop-in. Point them at your repo with `CITY_WALKS_REPO`; with it unset, the hooks stay silent.
 
 ## Notes
 

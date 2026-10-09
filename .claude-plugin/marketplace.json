@@ -161,6 +161,24 @@
         "ci",
         "gate"
       ]
+    },
+    {
+      "name": "city-walks-workflow",
+      "source": "./plugins/city-walks-workflow",
+      "description": "Workflow for a hand-drawn walking map (the SF City Walks map at wallywalks.app): landmark pieces drawn from their survey, piece review with evidence bound to the sprite, people and walkers as map sprites, map repairs and a pre-audit check, a new-city pipeline, address autocomplete, shared-Chrome discipline, the test.wallywalks.app preview deploy, per-branch production deploys, and a Google sign-in checklist. Its hooks are tripwires, not containment.",
+      "version": "0.5.4",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "maps",
+      "keywords": [
+        "maps",
+        "sprites",
+        "cloudflare-pages",
+        "illustration"
+      ]
     }
   ],
   "metadata": {

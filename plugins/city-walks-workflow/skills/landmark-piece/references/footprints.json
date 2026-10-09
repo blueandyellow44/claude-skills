@@ -1,0 +1,200 @@
+{
+  "golden-gate-bridge": {
+    "osm": "370672707",
+    "long_m": 1949,
+    "short_m": 29,
+    "axis_bearing_deg": 175,
+    "sizeM": 1280,
+    "height_m": 227,
+    "height_osm_tag_m": null,
+    "source_note": "Span piece: 1280 m main span (published), not the 1949 m OSM deck way. OK."
+  },
+  "palace-of-fine-arts": {
+    "osm": "288371295",
+    "long_m": 67,
+    "short_m": 58,
+    "axis_bearing_deg": 171,
+    "sizeM": 179,
+    "height_m": 49,
+    "height_osm_tag_m": 48,
+    "source_note": "Rotunda 67 m measured; sizeM 179 = whole drawing via rotunda share of width (recorded). Height tag 48 vs 49. OK."
+  },
+  "conservatory-of-flowers": {
+    "osm": "30675038",
+    "long_m": 75,
+    "short_m": 35,
+    "axis_bearing_deg": 84,
+    "sizeM": 75,
+    "height_m": 18,
+    "height_osm_tag_m": 15,
+    "source_note": "Footprint 75 m matches. Height: OSM tag 15 m, record 18 m (source not cited). Open."
+  },
+  "coit-tower": {
+    "osm": "28824850",
+    "long_m": 22,
+    "short_m": 22,
+    "axis_bearing_deg": 76,
+    "sizeM": 22,
+    "height_m": 64,
+    "height_osm_tag_m": 64,
+    "source_note": "Matches (22 m, 64 m)."
+  },
+  "ferry-building": {
+    "osm": "558731934",
+    "long_m": 201,
+    "short_m": 56,
+    "axis_bearing_deg": 144,
+    "sizeM": 201,
+    "height_m": 75,
+    "height_osm_tag_m": 15,
+    "source_note": "Footprint 201 m matches (way 558731934, found by name; record cites no way). heightM 75 is the clock tower; the piece is measured on the ground, so height is unused. OK."
+  },
+  "transamerica": {
+    "osm": "24222973",
+    "long_m": 54,
+    "short_m": 54,
+    "axis_bearing_deg": 81,
+    "sizeM": 54,
+    "height_m": 260,
+    "height_osm_tag_m": 260,
+    "source_note": "Matches (54 m, 260 m)."
+  },
+  "saints-peter-paul": {
+    "osm": "29902626",
+    "long_m": 48,
+    "short_m": 42,
+    "axis_bearing_deg": 171,
+    "sizeM": 48,
+    "height_m": 58,
+    "height_osm_tag_m": 23,
+    "source_note": "Footprint 48 m matches; 58 m is the spires (OSM tag 23 m is the roof). OK."
+  },
+  "columbus-tower": {
+    "osm": "288485994",
+    "long_m": 17,
+    "short_m": 16,
+    "axis_bearing_deg": 168,
+    "sizeM": 17,
+    "height_m": 29,
+    "height_osm_tag_m": 29,
+    "source_note": "Matches (17 m, 29 m)."
+  },
+  "sutro-tower": {
+    "osm": "r3829019",
+    "long_m": 59,
+    "short_m": 52,
+    "axis_bearing_deg": 60,
+    "sizeM": 59,
+    "height_m": 298,
+    "height_osm_tag_m": 298,
+    "source_note": "Matches (59 m, 298 m), relation 3829019 found by name."
+  },
+  "city-hall": {
+    "osm": "r7261820",
+    "long_m": 127,
+    "short_m": 98,
+    "axis_bearing_deg": 171,
+    "sizeM": 127,
+    "height_m": 94,
+    "height_osm_tag_m": 30,
+    "source_note": "Footprint 127 m matches (relation 7261820, found by name); 94 m is the dome (OSM tag 30 m is the roof line). OK."
+  },
+  "salesforce-tower": {
+    "osm": "431972186",
+    "long_m": 54,
+    "short_m": 54,
+    "axis_bearing_deg": 140,
+    "sizeM": 55,
+    "height_m": 326,
+    "height_osm_tag_m": 326,
+    "source_note": "Footprint 54 x 54 m; sizeM 55 OK. Comment said 67x64 m: corrected 2026-10-03."
+  },
+  "grace-cathedral": {
+    "osm": "32946942",
+    "long_m": 96,
+    "short_m": 43,
+    "axis_bearing_deg": 81,
+    "sizeM": 96,
+    "height_m": 53,
+    "height_osm_tag_m": 53,
+    "source_note": "Matches (96 m, 53 m); front faces east to Huntington Park, consistent with OSM positions."
+  },
+  "alcatraz": {
+    "osm": "128245373",
+    "long_m": 65,
+    "short_m": 49,
+    "axis_bearing_deg": 136,
+    "sizeM": 97,
+    "height_m": 41,
+    "height_osm_tag_m": null,
+    "source_note": "DEFECT FIXED: Main Prison 65 x 49 m; the 82 m used was the diagonal. sizeM 140 -> 97 (65 m x 649/437 px along the drawing axis)."
+  },
+  "cliff-house": {
+    "osm": "168942988",
+    "long_m": 71,
+    "short_m": 32,
+    "axis_bearing_deg": 154,
+    "sizeM": 71,
+    "height_m": 20,
+    "height_osm_tag_m": 7,
+    "source_note": "Footprint 71 m matches; 20 m height vs tag 7 m (one section) is recorded."
+  },
+  "dutch-windmill": {
+    "osm": "287921407",
+    "long_m": 18,
+    "short_m": 18,
+    "axis_bearing_deg": 110,
+    "sizeM": 18,
+    "height_m": 23,
+    "height_osm_tag_m": 13,
+    "source_note": "Matches (18 m tower); 23 m includes sails (tag 13 m tower only), recorded."
+  },
+  "legion-of-honor": {
+    "osm": "relation/21115818",
+    "long_m": 94,
+    "short_m": 60,
+    "axis_bearing_deg": 49,
+    "sizeM": 94,
+    "height_m": 24,
+    "height_osm_tag_m": null,
+    "source_note": "Footprint 94 m and axis 49 deg match relation 21115818 and the recorded front bearing 49."
+  },
+  "de-young": {
+    "osm": "relation/1652482",
+    "long_m": 154,
+    "short_m": 76,
+    "axis_bearing_deg": 48,
+    "sizeM": 154,
+    "height_m": 44,
+    "height_osm_tag_m": 10,
+    "source_note": "Footprint 154 m and axis 48 deg match relation 1652482 and the record."
+  },
+  "oracle-park": {
+    "osm": "relation/7325085",
+    "long_m": 212,
+    "short_m": 191,
+    "axis_bearing_deg": 45,
+    "sizeM": 212,
+    "height_m": 45,
+    "height_osm_tag_m": null,
+    "source_note": "Footprint 212 m matches relation 7325085. Record calls way 500283910 \"124 x 121 m\"; it measures 114 x 109 m (orientation claim unaffected). Comment-level only."
+  },
+  "millennium-tower": {
+    "osm": "72963089",
+    "long_m": 55.9,
+    "short_m": 49.8,
+    "axis_bearing_deg": 169,
+    "sizeM": 56,
+    "height_m": 197,
+    "height_osm_tag_m": 197,
+    "source_note": "OSM way/72963089 fetched 2026-10-06; 13-node footprint, long side 55.9 m at 169 deg, width 49.8 m. Drawn with a 6 deg lean toward 288 (a design ruling, 2026-10-06), an exaggeration of the real ~0.2 deg."
+  },
+  "_source": "the app repo's .agents/continuation-20261003/sprite-reconciliation.md (OSM API, measured 2026-10-03): minimum-area rectangle of each way/relation.",
+  "_qualifications": [
+    "height_m is the project RECORD's figure (often the tallest feature: a clock tower, dome, spire or sails); height_osm_tag_m is OSM's tag (often the roof line). They differ for several pieces and neither was re-verified here.",
+    "long_m/short_m are the surveyed footprint. sizeM is what the MAP sizes the drawing by and is not always the footprint: the Golden Gate Bridge uses its 1280 m main span (published), not the 1949 m deck way; the Palace of Fine Arts uses 179 m for the whole drawing though its rotunda footprint is 67 m.",
+    "source_note carries each row's own caveat verbatim, including figures whose source is not cited (Conservatory height 18 m).",
+    "Photographic handedness and camera convention were carried from the record, not re-verified. Refresh from OSM when a piece is added; never type a dimension from memory.",
+    "Covers the 18 pieces surveyed on 2026-10-03. Pieces added later (six on 2026-10-04) are NOT here; tools abstain on them."
+  ]
+}

@@ -1,0 +1,2515 @@
+{
+ "version": 1,
+ "source_files": [
+  ".claude-plugin/plugin.json",
+  "README.md",
+  "hooks/hooks.json",
+  "hooks/piece_gate.py",
+  "hooks/site_guard.py",
+  "lib/cw_common.py",
+  "skills/address-index/SKILL.md",
+  "skills/cross-session-port/SKILL.md",
+  "skills/dual-site-deploy/SKILL.md",
+  "skills/google-signin-pages/SKILL.md",
+  "skills/landmark-piece/SKILL.md",
+  "skills/landmark-piece/references/footprints.json",
+  "skills/landmark-piece/references/protected.json",
+  "skills/landmark-piece/scripts/camera_check.py",
+  "skills/linkedin-carousel/SKILL.md",
+  "skills/linkedin-carousel/scripts/export_walk.mts",
+  "skills/linkedin-carousel/scripts/make.py",
+  "skills/linkedin-carousel/scripts/mapslide.py",
+  "skills/map-character/SKILL.md",
+  "skills/map-preflight/SKILL.md",
+  "skills/map-preflight/scripts/preflight.py",
+  "skills/map-repair/SKILL.md",
+  "skills/new-city/SKILL.md",
+  "skills/pages-preview/SKILL.md",
+  "skills/pages-preview/scripts/preview_deploy.sh",
+  "skills/piece-review/SKILL.md",
+  "skills/piece-review/references/browser-snippets.md",
+  "skills/piece-review/scripts/review_gate.py",
+  "skills/piece-review/scripts/weight_table.py",
+  "skills/shared-chrome/SKILL.md",
+  "skills/walk-cycle/SKILL.md",
+  "skills/walker-motion/SKILL.md",
+  "tests/camera_cases.py",
+  "tests/deploy_cases.sh",
+  "tests/gate_evidence_cases.py",
+  "tests/hook_cases.py",
+  "tests/return_path_case.py",
+  "tests/weight_cases.py"
+ ],
+ "deleted": [],
+ "added": {},
+ "banned": [
+  [
+   5,
+   "3072c9efc4158f77"
+  ],
+  [
+   5,
+   "71bfaa5bfdd7803f"
+  ],
+  [
+   6,
+   "73ecb4b9d82c620a"
+  ],
+  [
+   7,
+   "3e44fb009899c0f9"
+  ],
+  [
+   8,
+   "d029cfa26e605ec2"
+  ],
+  [
+   8,
+   "eb59dee84c5adb1d"
+  ],
+  [
+   10,
+   "cf1341d8798c408e"
+  ],
+  [
+   11,
+   "7903df74450b5504"
+  ],
+  [
+   11,
+   "e1c746d22c576052"
+  ],
+  [
+   12,
+   "88a3cb18bbbbe5e9"
+  ],
+  [
+   13,
+   "44031a8ebe018aeb"
+  ],
+  [
+   14,
+   "0b7e13accfd2c24d"
+  ],
+  [
+   14,
+   "b41eefc588341210"
+  ],
+  [
+   15,
+   "cd9c32b47ba3f8a3"
+  ],
+  [
+   16,
+   "8da88ecdf865db37"
+  ],
+  [
+   18,
+   "6eeba5ce07e891df"
+  ],
+  [
+   20,
+   "7bcfcaa6abd98c4e"
+  ]
+ ],
+ "files": {
+  ".claude-plugin/plugin.json": [
+   {
+    "key": [
+     "19c4036a7b10344b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"name\": \"Max Sheahan\",\n",
+     "    \"url\": \"https://maxsheahan.com\"\n"
+    ]
+   },
+   {
+    "key": [
+     "4442ef63c787b0a8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  \"description\": \"Workflow for a hand-drawn walking map (the SF City Walks map at wallywalks.app): landmark pieces drawn from their survey, piece review with evidence bound to the sprite, people and walkers as map sprites, map repairs and a pre-audit check, a new-city pipeline, address autocomplete, shared-Chrome discipline, the test.wallywalks.app preview deploy, per-branch production deploys, and a Google sign-in checklist. Its hooks are tripwires, not containment.\"\n"
+    ]
+   }
+  ],
+  "README.md": [
+   {
+    "key": [
+     "f69f5eddee519589"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Skills and two gates for building a hand-drawn walking map, as used on the SF City Walks map at wallywalks.app. Most of them exist because something went wrong on the real map at least once; where a skill has a \"Why this exists\" section, it says what.\n"
+    ]
+   },
+   {
+    "key": [
+     "794e9ea28239d435"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| map-character | Drawing a real person as a map sprite took four rounds |\n",
+     "| walk-cycle | An animated walker needs frames that stay on one baseline and one ink color |\n",
+     "| walker-motion | The walker drifted against the street, walked in place, or faced the wrong way |\n",
+     "| map-repair | Map defects fixed one way each: mask-only repaints, roads in the map's hand, the loop on the road, pieces as sharp overlays, super-resolution |\n",
+     "| map-preflight | An outside audit found 17 defects nothing in the build caught; a script plus named looks finds them first |\n",
+     "| new-city | Standing up a new city on the City Walks Template pipeline, one gated stage at a time |\n",
+     "| address-index | Address autocomplete from the city's own address table, no Places API |\n",
+     "| shared-chrome | Several sessions share one Chrome; hidden pages stall |\n"
+    ]
+   },
+   {
+    "key": [
+     "7e0e1a0a681e6cdb"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "| dual-site-deploy | Each production site must deploy from its own branch with its own build |\n",
+     "| cross-session-port | Moving commits onto a branch another session owns, without touching its tree |\n"
+    ]
+   },
+   {
+    "key": [
+     "361f0763b7f7832d",
+     "ced3fcf9bf6e1473",
+     "991b34e484e35b16"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "| linkedin-carousel | Browser screenshots made blurry slides; the carousel is drawn in code |\n"
+    ]
+   },
+   {
+    "key": [
+     "2efeeff080bbc992"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "## Setup\n"
+    ]
+   },
+   {
+    "key": [
+     "be2695c935ddb363"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Set `CITY_WALKS_REPO` to the map app's checkout. The hooks act only inside that folder and are silent everywhere when it is unset. The scripts take `--repo` too.\n"
+    ]
+   },
+   {
+    "key": [
+     "71fc5a4ac7e718ce"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Scripts are Python 3 with Pillow and numpy (map-preflight also uses OpenCV). Shared helpers: `lib/cw_common.py`.\n",
+     "\n",
+     "## Hooks\n",
+     "\n",
+     "`hooks/hooks.json` holds tripwires, not containment.\n",
+     "\n",
+     "- `piece_gate.py pre` blocks a command or edit that names a sprite (or a sprite script, a whole-set re-key, or a git command that restores sprites) until an object record under 12 hours old exists with its brief written. A script that writes a sprite without naming its path is outside it.\n",
+     "- `piece_gate.py stop` blocks a reply that calls a piece fixed until review evidence exists that is well formed, recent and bound to the sprite's bytes. It matches English phrasing, so it can miss a claim or block a sentence that only sounds like one, and it lets go after two blocks with a NOT RESOLVED warning.\n",
+     "- `site_guard.py` blocks a `wrangler pages deploy` from the wrong branch, or of a build made for another site. Sites beyond wallywalks.app go in a JSON file named by `CITY_WALKS_SITES` (format at the top of the script).\n",
+     "\n",
+     "Neither piece gate proves that a record was read or a capture was looked at. Measured cases: `tests/`.\n",
+     "\n",
+     "## Object records\n",
+     "\n",
+     "The piece gate wants a record of a piece's history before its sprite changes: `<repo>/.agents/object-records/<slug>-<YYYYMMDD>.md`. A record counts when it has\n",
+     "\n",
+     "- a `generated: <ISO time>` line, under 12 hours old;\n",
+     "- the headings `## 1. git history`, `## 4. written rulings`, `## 5. <whose> own words` and `## 6. Brief`;\n",
+     "- under `## 6. Brief`, four `- label: answer` lines with distinct written answers: who decided what and when, what was rejected, the approved version, and what the planned change touches.\n",
+     "\n",
+     "Write it by hand or with your own generator. A whole-set change needs `<repo>/.agents/object-records/WHOLE-SET-<YYYYMMDD>.md` quoting the owner's word for it.\n",
+     "\n",
+     "## Tests\n",
+     "\n",
+     "Each test in `tests/` takes the script under test as its argument, for example `python3 tests/hook_cases.py hooks/piece_gate.py`, and needs `CITY_WALKS_REPO` set. They use fixtures and mocks and change nothing in the repo. `camera_cases.py`, `weight_cases.py` and `return_path_case.py` read the app repo's own sprites, evidence files and API routes, so they run only against that repo.\n",
+     "\n",
+     "Editing an installed copy does not change what a running session loads: Claude Code runs the copy in its plugin cache until the plugin is updated or reinstalled.\n"
+    ]
+   }
+  ],
+  "hooks/hooks.json": [
+   {
+    "key": [
+     "612d38540de0244f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  \"description\": \"Piece gates for the map repo named by CITY_WALKS_REPO. Tripwires on the common paths, not containment: a command or edit that names a sprite needs a recent object record; a reply that calls a piece fixed needs review evidence bound to the sprite on disk. Silent outside that repo, and everywhere when CITY_WALKS_REPO is unset. Limits are listed at the top of piece_gate.py. site_guard.py blocks a `wrangler pages deploy` from the wrong branch, or of a build made for another site.\",\n"
+    ]
+   }
+  ],
+  "hooks/piece_gate.py": [
+   {
+    "key": [
+     "01f9e8175cd85d16"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Two gates for map pieces in the map repo named by CITY_WALKS_REPO. Silent\n",
+     "everywhere else, and silent everywhere when CITY_WALKS_REPO is unset.\n"
+    ]
+   },
+   {
+    "key": [
+     "a19743fcef37dddd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    '<repo>-2' shares the prefix and is NOT inside. No repo configured: never inside.\"\"\"\n",
+     "    if not (root or REPO):\n",
+     "        return False\n"
+    ]
+   },
+   {
+    "key": [
+     "0fa960c328be2b71"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        return False, f\"{path} has no 'generated:' line, so it was not written by a record generator (README, 'Object records'); regenerate it\"\n"
+    ]
+   },
+   {
+    "key": [
+     "4978b5b9e332a85a",
+     "e6a92bb6352f0fe3",
+     "17878800e49b47c6"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "        return False, f\"the newest record for {slug} is {age_h:.0f} h old; regenerate it (records lapse after {RECORD_WINDOW_H} h)\"\n",
+     "    if not (all(h in text for h in (\"## 1. git history\", \"## 4. written rulings\", \"## 6. Brief\"))\n",
+     "            and re.search(r\"^## 5\\. .*own words\", text, re.M)):\n",
+     "        return False, f\"{path} lacks the evidence sections a record carries (README, 'Object records')\"\n"
+    ]
+   },
+   {
+    "key": [
+     "cefafdffc5af09ae"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        if not REPO:\n"
+    ]
+   },
+   {
+    "key": [
+     "8a7e7836a0fbe958"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        name = os.path.basename(os.path.normpath(REPO))\n",
+     "        if not (inside(cwd) or os.path.realpath(REPO) in cmd or REPO in cmd or name in cmd):\n",
+     "            return 0\n",
+     "        if not inside(cwd) and name + \"-\" in cmd and REPO + \"/\" not in cmd and REPO + '\"' not in cmd:\n"
+    ]
+   },
+   {
+    "key": [
+     "8c5fecd993314bd6",
+     "020beed445b91208"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "            out.append(\"this rewrites the WHOLE sprite set, including the pieces approved by name (landmark-piece/references/protected.json). \"\n",
+     "                       \"Work on one piece (scripts/sprites/key-piece.py <slug>), or get the owner's word and quote it in \"\n"
+    ]
+   },
+   {
+    "key": [
+     "60e4110b805d9875",
+     "c82ccce62a3c69a8",
+     "9d7f68bf4a7ea4c1",
+     "0c9d61a26d9fe7fe"
+    ],
+    "ctx": 0,
+    "old": 4,
+    "new": [
+     "        # The record format is in this plugin's README (\"Object records\").\n",
+     "        sys.stderr.write(\"piece-gate: read the object's record before changing it (README, 'Object records').\\n  - \"\n"
+    ]
+   },
+   {
+    "key": [
+     "8798256eb7ef2dae"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                         + \"\\n  Write or regenerate the record for <slug> in .agents/object-records/, read it, write its brief.\\n\")\n"
+    ]
+   }
+  ],
+  "hooks/site_guard.py": [
+   {
+    "key": [
+     "11079651746b7d26",
+     "4a97522e6f6f39e3",
+     "4bb39e17666674c1",
+     "092a0c5f23f91cea",
+     "19a924b1eb0aeb1d",
+     "3afd19384d09d526",
+     "7ccabf701254ef0b",
+     "f2aba4d12b35c5c5",
+     "4d4db6ac64a5d3fb",
+     "ae35c3bdfb9d36ea"
+    ],
+    "ctx": 0,
+    "old": 10,
+    "new": [
+     "Each production site deploys from its own branch with its own build. Before a\n",
+     "`wrangler pages deploy` to a known Pages project, this checks that the checkout\n",
+     "is on that site's branch and that the built page is a build FOR that site: its\n",
+     "og:url must be the site's URL, and a site's share card (if it has one) must be\n",
+     "in its own build and in no other site's build.\n",
+     "\n",
+     "Sites: wallywalks.app below. A project with more than one site adds the others\n",
+     "in a JSON file named by CITY_WALKS_SITES, same shape as SITES, for example\n",
+     "  {\"other-project\": {\"url\": \"https://other.example\", \"branch\": \"other\",\n",
+     "                     \"build\": \"npm run build:other\", \"card\": \"/og/other.png\"}}\n",
+     "Entries there are added to, and replace, the built-in ones.\n"
+    ]
+   },
+   {
+    "key": [
+     "4ea5bf76b551f8f6",
+     "b69e96e8ea22eaeb"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "    \"wallywalks-app\": {\"url\": \"https://wallywalks.app\", \"build\": \"npm run build\", \"branch\": \"wallywalks-app\", \"card\": None},\n"
+    ]
+   },
+   {
+    "key": [
+     "23fc708319458af7"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "\n",
+     "\n",
+     "def sites():\n",
+     "    out = dict(SITES)\n",
+     "    path = os.environ.get(\"CITY_WALKS_SITES\")\n",
+     "    if path:\n",
+     "        try:\n",
+     "            out.update(json.load(open(os.path.expanduser(path))))\n",
+     "        except (OSError, ValueError) as e:\n",
+     "            block(f\"CITY_WALKS_SITES={path} could not be read ({type(e).__name__}); fix it or unset it\")\n",
+     "    return out\n"
+    ]
+   },
+   {
+    "key": [
+     "715a65ee9b2044f5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    known = sites()\n",
+     "    site = known.get(project or \"\")\n"
+    ]
+   },
+   {
+    "key": [
+     "c4d7346d90b589bd",
+     "b08b41dd3e674036"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "    own_card = site.get(\"card\")\n",
+     "    foreign = [p for p, s in known.items() if p != project and s.get(\"card\") and s[\"card\"] in html]\n",
+     "    if og_url != site[\"url\"] or (own_card and own_card not in html) or foreign:\n"
+    ]
+   },
+   {
+    "key": [
+     "1e0a0cab3be3fce0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            f\"{' carrying the share card of ' + ', '.join(foreign) if foreign else ''}, not for {project} ({site['url']}). \"\n"
+    ]
+   }
+  ],
+  "lib/cw_common.py": [
+   {
+    "key": [
+     "62a3476d5fad775d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "import os, re\n"
+    ]
+   },
+   {
+    "key": [
+     "cab81d5fe1c11b95",
+     "f00f0ca20e9de457",
+     "9d7549f8c4a5950e",
+     "aef7e9cbcf70e3a7",
+     "2df0dd30ebb1585e",
+     "011aeeb8c37a8b55",
+     "d04a731f8b2560bc",
+     "713ddbb30ce9f68a"
+    ],
+    "ctx": 0,
+    "old": 8,
+    "new": [
+     "# The map app's repo. Set CITY_WALKS_REPO to its path. Unset, the hooks stay silent\n",
+     "# and the scripts ask for --repo.\n",
+     "REPO = os.path.expanduser(os.environ.get(\"CITY_WALKS_REPO\", \"\"))\n"
+    ]
+   },
+   {
+    "key": [
+     "12e624bbc4cd164a",
+     "296c78ed7af3b8b6",
+     "a2cef3b4a95c302d"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": []
+   },
+   {
+    "key": [
+     "4071f3d0c4c7ac91",
+     "676e9187f2d5905a",
+     "b2af4ab697663d6a",
+     "01ba4719c80b6fe9",
+     "d47b88014d264d3a",
+     "4b372496bf317ac8",
+     "2874f327435a6a99",
+     "d8dbb0d161cedae5",
+     "6848fd891265d236",
+     "ccccd9429c474bbd",
+     "6923016285a9ad7c",
+     "0419263ffb492e86",
+     "54c0a8c1758b6691",
+     "31e5ae1c2c70f1f4",
+     "b28d84c4fc6c4049",
+     "522b9e0938d05236",
+     "2074b77b58c87172",
+     "3cd12e702ac47601",
+     "d19ac9a6650df26f",
+     "a6a7152572ee84f1",
+     "ce1bdd40a7a7e124",
+     "9e3dd23a15d2b714",
+     "6f61555833eecc75",
+     "957805c3fe7ac630",
+     "7b6561e51c9984f0",
+     "f61bbd36da2bf6b7",
+     "9d8a9e9c3252820c",
+     "550b4918854b39e4",
+     "74181b4e7b740189",
+     "c41a580e08dae710",
+     "4a62e2ba7db528c2",
+     "7f3d195d3a4d6502",
+     "ac44bb345511e7db",
+     "950c5d6dd5918fb6",
+     "e21d8b25adf9e735",
+     "35af6b690d5a75e0",
+     "9833757c6bbc6c9e",
+     "07dcddfa9495a463",
+     "3b5430e18720137a",
+     "63bcf9a9001e7457",
+     "9833757c6bbc6c9e",
+     "d067f191cd9a8e36",
+     "9833757c6bbc6c9e",
+     "234b9d219b2f3606",
+     "cb600c392b6dff56",
+     "6d4b8dc04d264a43",
+     "18f216388b740b36",
+     "e0ef74f503ab014c",
+     "d9740cf801090290",
+     "6c650489b6f27410",
+     "c9a4348301c70a02",
+     "a6a301fc294e1c5d",
+     "0b7f6a2ca30e4bcb",
+     "44a7c52e94bf0a2f",
+     "86f2fa2300e46669",
+     "9833757c6bbc6c9e",
+     "dd0294309df492a5",
+     "49b2ab106ace5fdc",
+     "541e42530da86ec7",
+     "fb6bada8e561e15c",
+     "a3975e708384bd58",
+     "66ebca962c354402",
+     "31a7eab58298c28f",
+     "454bc7a5b55cb6c2",
+     "c7d6d60f4abdb404",
+     "9645757a6e3f1a8a",
+     "cd19072ef83a3b63",
+     "2faf4c63eed7cb9c",
+     "c28650fd11543c41",
+     "bafb765ef7cc5995",
+     "8155af1377b1d757",
+     "327be6d54194cc6e",
+     "fed6ba231b3327f5",
+     "327be6d54194cc6e",
+     "bd45f1863c1c0671",
+     "b16c039a7fa29016",
+     "875c8d6fc480a4f7",
+     "d55a3709d43fa649",
+     "d1fc77661a4c8902",
+     "22c48170aec46905",
+     "44faacd0d3166448",
+     "5a4742ad0b74b11b",
+     "26a016b5bb41427e",
+     "810f1148aedbbac1",
+     "4813c8c47638c7b2",
+     "89d821f2b21c3623",
+     "ea9f8d9a6d850f8c",
+     "32df0aa5d8339890",
+     "aef431ddc384458c",
+     "1a5734205c6d29da",
+     "c1caca716e0fcd1c",
+     "d8b43d7df75301fe",
+     "fdd637feead0e081",
+     "7954876397b8b885",
+     "144556d1a16745ea",
+     "9d880efcbf176998",
+     "b50603fb46d3dc87",
+     "993e9055c8f19cdb",
+     "01ba4719c80b6fe9",
+     "01ba4719c80b6fe9"
+    ],
+    "ctx": 0,
+    "old": 100,
+    "new": []
+   }
+  ],
+  "skills/address-index/SKILL.md": [
+   {
+    "key": [
+     "4fc98a40fc4c9967"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Refresh or repair the SF City Walks / wallywalks.app address autocomplete: the D1 table of every San Francisco address (DataSF Enterprise Addressing System), its key normalization, the local and remote loads, and the /api/geocode tiers. Use when the owner says an address does not complete, a new street or building is missing, 'autofill', or when DataSF has new rows. Built 2026-10-06 when Google's terms took Places off a non-Google map. Never Google Places.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "71431c2786e68c1b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "\"68 mac\" completes to \"68 Macondray Ln\" from our own table, for everyone, with no key and nobody else's server in the path. The ruling (2026-10-06): no Google branding, keep the current setup, better autofill for all SF addresses.\n"
+    ]
+   },
+   {
+    "key": [
+     "128b2066ff2bb0ab"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- `lib/addressKey.ts`: ONE normalizer for both sides. Key = \"<number> <street words, trailing type dropped>\"; `skey` = street words alone; `nkey` = the city's landmark name. `parseQuery` turns what a person typed into the same shape. If the key rule changes, the table must be rebuilt AND the cache letter in `/geocode` bumped.\n"
+    ]
+   },
+   {
+    "key": [
+     "7fdc2cf4c9e602f0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- `lib/addressSearch.ts`: tiers in `/geocode`: number present → addresses by key prefix (a typed partial street type is forgiven by dropping the last word); no number → known places (`data/sfPlaces.ts`, `boardLandmarks`, `landmarks`) by name, then the city's named buildings, then streets grouped with a midpoint \"(street)\". Fewer than 3 results → Nominatim appended. Cache key `geocode:l:<q>`; change the letter when behavior changes.\n"
+    ]
+   },
+   {
+    "key": [
+     "54a5c70ee5424d0b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. Remote, on the owner's word (it is the shared production database): the d1 execute above, then `SELECT count(*)` and a curl against production.\n"
+    ]
+   },
+   {
+    "key": [
+     "5283e9fec415771a",
+     "3d3f97bfac1fbd38"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. Google Places, Places UI Kit, Routes: never; the terms (14.2, 19.2) forbid their results on this map, and the ruling is no Google branding.\n",
+     "2. The remote load is a production change; it waits for the owner's word like a migration.\n"
+    ]
+   },
+   {
+    "key": [
+     "3dd507b6da0c5713"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   }
+  ],
+  "skills/cross-session-port/SKILL.md": [
+   {
+    "key": [
+     "db8d98cb17bcbbb6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: Move this session's commits onto a branch another Claude session owns (one production branch to another and back) without touching that session's worktree or uncommitted files, then hand the merge and the deploy to the owner. Use when the owner says a change should go to the other site, when another session deployed your commits, or when \"coordinate with the other sessions\" comes up.\n"
+    ]
+   },
+   {
+    "key": [
+     "534e86f17e607d32"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The change lands on the other branch, the owning session merges and deploys it in its own sequence, nothing it was holding is overwritten, and the owner gets one deployment id back.\n"
+    ]
+   },
+   {
+    "key": [
+     "89ea2c000798907a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "2026-10-06. Several parallel sessions were working on two sites built from one repo, and the ask was to communicate with the first and coordinate. The first message went to the wrong session (it was on unrelated work); the deploy in question had already gone out from another session carrying this session's commits; the owning session's worktree held an uncommitted edit to the very file the port changed; `git cherry-pick`, `git apply` and `git revert` are all stopped by this plugin's piece gate.\n"
+    ]
+   },
+   {
+    "key": [
+     "ce1b8f78625c614f",
+     "0cf2516e54eb646b"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. **Find out what already happened.** The project's log (other sessions record their deploys there), `git tag --points-at <your HEAD>`, and `git merge-base --is-ancestor <sha> <branch>` before claiming anything is or is not deployed. Check the live bundle for your change.\n",
+     "2. **Find the owner by evidence.** `ListAgents`, then the project notes that name sessions and branches. Ask one session; if it says it is not the owner, take its pointer and move on.\n"
+    ]
+   },
+   {
+    "key": [
+     "052c4d83f80cfce7",
+     "bfba6bb203282c3e"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "6. **Hand off.** Message the owning session: the owner's words verbatim, the branch, the commits, the files, the exact hunks in any file its uncommitted edit touches, and that the merge and deploy are its to sequence. Remove the scratch worktree; keep the branch.\n",
+     "7. **Verify the reply.** `git merge-base --is-ancestor` on the owning session's branch, then the live site after its deploy.\n"
+    ]
+   },
+   {
+    "key": [
+     "67adbad543a3ca27",
+     "4f15dc3d85e45ba4"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. One session merges and deploys a branch. Offer to do it; do not do it unasked.\n",
+     "2. The owner's ruling travels verbatim, and so do reversals: when the owner cuts something, tell the owning session before reverting anything yourself, so two sessions do not revert the same commit.\n"
+    ]
+   }
+  ],
+  "skills/dual-site-deploy/SKILL.md": [
+   {
+    "key": [
+     "2f4a6cf78e78eea5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Deploy each production site built from this repo from its OWN branch: wallywalks.app (the product, branch wallywalks-app) and any second site built from the same code on its own branch and worktree, with scripts/deploy-site.mjs: refuse the wrong branch and a dirty tree, build the site its own way, check the built page, swap and always restore wrangler.toml, check the live site. Use when the owner says 'deploy', 'deploy to production' or names a site. The test preview is pages-preview.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "e541752bfc816b4c",
+     "3c1a55c9cc1aa105",
+     "f695edca8c39670d",
+     "ec7305edd611e744",
+     "e6798a28e7f82f85"
+    ],
+    "ctx": 0,
+    "old": 5,
+    "new": [
+     "- Each site is its own project: its own branch, Pages project, build command, data and secrets. Keep them apart even though they share the map code.\n",
+     "- wallywalks.app: branch `wallywalks-app` in the map repo, Pages project `wallywalks-app`, `npm run build`. Google sign-in, caps, Stripe packs, no Google content.\n",
+     "- A second site: its own branch in its own worktree under `.claude/worktrees/`, its own Pages project and build command (`scripts/deploy-site.mjs` names them). It may run without sign-in, caps or billing; then it carries NO payment secret, ever.\n",
+     "- A product change reaches another site only by a deliberate merge into that site's branch on the owner's word for that change. Never merge payment, pricing or sign-in work into a site that runs without them.\n",
+     "- The plugin's `site_guard` hook blocks a hand-typed deploy from the wrong branch or of the wrong build. List the sites beyond wallywalks.app in the file named by `CITY_WALKS_SITES`.\n"
+    ]
+   },
+   {
+    "key": [
+     "c3e1b5da63cd1723",
+     "da1c5ee298b27822",
+     "c71ac5f25e25be77",
+     "f8b3d4fc3fe6c9da"
+    ],
+    "ctx": 0,
+    "old": 4,
+    "new": [
+     "1. Only on the owner's word naming the site. Commit first: the script refuses uncommitted tracked changes and the wrong branch.\n",
+     "2. wallywalks.app: in the map repo on `wallywalks-app`, `node scripts/deploy-site.mjs app`. Another site: in its worktree on its branch, `node scripts/deploy-site.mjs <site>`. Data first where needed: rendered audio and media to that site's bucket, D1 migrations to that site's database.\n",
+     "3. Read the script's live checks (page, mode, a sample story); for a site without billing also confirm `/api/billing` reports no pack. Confirm in the user's own Chrome when the change is visual.\n",
+     "4. Tag a wallywalks.app production deploy `deploy-prod-YYYY-MM-DD[letter]`; record the deployment id in that site's own project notes the same turn.\n"
+    ]
+   },
+   {
+    "key": [
+     "82b73c562d8644c5",
+     "4f15e53de1debe36"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "2. A paid or personal resource that only one site has (its own database, its own media bucket) is never copied to the other site.\n",
+     "3. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   }
+  ],
+  "skills/google-signin-pages/SKILL.md": [
+   {
+    "key": [
+     "0f86503e04265fda"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Repeatable checklist for Google sign-in on a Cloudflare Pages app, as set up for wallywalks.app on 2026-10-03: Google Cloud project and consent screen, OAuth web client with origins and redirect URIs per host, Pages secrets for production and preview, the Hono callback routes, local dev on localhost, custom-domain preview, brand verification, and the verification that a stranger cannot read or change another account's data. Use when the owner says 'add Google sign-in', 'set up login', 'sign-in is broken on test', 'redirect_uri_mismatch', 'consent screen shows the wrong name', or a new host or app needs the same setup.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "b79fd5d2945bbc3c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Built once for wallywalks.app on 2026-10-03 (`.agents/continuation-20261003/LOG.md`, 21:15 onward; routes in the API worker's catch-all route file under `functions/api/`). Steps marked (console) were done in the owner's logged-in Chrome and were not captured as commands; confirm each against the console as you go and correct this file when one differs.\n"
+    ]
+   },
+   {
+    "key": [
+     "33cc5804da5c0d49"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Its own project.** One Google Cloud project per product, named for it (`wallywalks-app`). Verify whose product it is before reusing a project: never reuse another product's project. Read the project id back after creating it; a stray empty project was created by mistake once.\n"
+    ]
+   },
+   {
+    "key": [
+     "ca656918b266a016"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. **Publish: \"In production\".** Left in \"Testing\", only hand-added test users can sign in, and testers must not need to be added by hand.\n"
+    ]
+   },
+   {
+    "key": [
+     "25a9447d3ddbcefe"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "6. **Brand verification.** Until it passes, the consent screen shows the bare domain and no logo. Needs the live privacy page and domain ownership proof in Search Console (a DNS TXT record). Submitting it is the owner's word.\n"
+    ]
+   },
+   {
+    "key": [
+     "c73def21acbcc053",
+     "c24a73bc5434fc5e"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "11. **The account comes from the session only**, never from the request (`space = g:<sub>`). Signed out, as read in the route file on 2026-10-04: `GET /walks` and `GET /notes` return empty; the mutation and generation routes that check the session answer 401 (`POST`/`PUT`/`DELETE /walks...`, `PUT /notes`, `POST /routes/suggest`, `POST /routes/enroute`, `POST /walks/:id/text` and the per-walk photo and sketch routes). `POST /auth/signout` and the lookup routes (`/geocode`, `/place`, `/reverse`, `/route`) do not require a session. Re-read the file for the current list; do not assume \"every write\".\n",
+     "12. **Return paths must stay on the site.** `safeReturn` rejects anything that does not start with a single `/`, any backslash or control character, and anything that resolves to another origin. Until 2026-10-04 it accepted `/\\\\example.invalid`, which browsers send to another site (an open redirect after sign-in); fixed in the working tree that day on the owner's word. `tests/return_path_case.py` in this plugin runs the real function from the file. It checks the working tree only: whether a given deploy carries the fix is a separate, live check.\n"
+    ]
+   },
+   {
+    "key": [
+     "800d343db4dc3413"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "17. The full flow in the user's own Chrome on local, then on the preview host: consent shows only name, picture and email; return lands on the page it left.\n"
+    ]
+   },
+   {
+    "key": [
+     "51ea5eacd4a055d3",
+     "0d21dba90dc12636"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. Reading the routes in the API route file (the auth block) is obligatory before changing or porting them.\n",
+     "2. Creating the Google project, publishing the consent screen, submitting brand verification and adding DNS records are the owner's actions or need the owner's word; do the rest.\n"
+    ]
+   },
+   {
+    "key": [
+     "b11008993884125a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. When the owner rules out something this skill does, or a console step differs from this file, correct the file in the same turn.\n"
+    ]
+   },
+   {
+    "key": [
+     "4eebb9e8464d031a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The checklist with each line marked done, not done, or the owner's action, and the verification results with what was measured.\n"
+    ]
+   }
+  ],
+  "skills/landmark-piece/SKILL.md": [
+   {
+    "key": [
+     "77c8f6bad9561639"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"The one pipeline for making or redrawing a landmark piece (sprite) on the SF City Walks / wallywalks.app map: surveyed OSM footprint and building parts, a deterministic render in the set's 30 degree camera, keying, anchoring on the footprint centroid, registration, and verify-pieces. Use when the owner says 'add a piece', 'new landmark', 'redraw the X', 'the X looks wrong', 'fix orientation', 'fill gaps on the walks', 'draw it from the survey', or when a piece has come back wrong in shape twice. Not for piece SIZE rules (lib/pieceScale.ts, the owner's word only) and not for the review that follows (piece-review).\"\n"
+    ]
+   },
+   {
+    "key": [
+     "d8eb304dea1afc4d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The de Young was redrawn by the image model six or seven times (2026-09-22 to 2026-10-03) and came back a thin bar each time. Then its first survey render looked straight down on the plan, against the ONE CAMERA ruling, and drew far too heavy at full zoom-out. The lesson: a landmark the image model keeps misshaping gets drawn from its survey.\n"
+    ]
+   },
+   {
+    "key": [
+     "d0866e9479db97aa"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Bash (python3 with Pillow, numpy, scipy; node; network to the OSM API and Overpass). Run from the map repo (`$CITY_WALKS_REPO`).\n"
+    ]
+   },
+   {
+    "key": [
+     "dc3f5acc37277f4e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Write the piece's object record (README, \"Object records\") and fill in its brief. The hook checks for it on the sprite scripts and on commands that name the sprite.\n"
+    ]
+   },
+   {
+    "key": [
+     "b1cf436bf5d2e1de",
+     "c39c0aee3c210f3b"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- Check `references/protected.json`. A protected piece (the Ferry Building, `c3b44f7`) is not redrawn or re-keyed without the owner's word in this session.\n",
+     "- The de Young is OFF THE MAP by the owner's ruling (2026-10-04), after the survey render was still too big. Do not redraw, re-key or unhide it without the owner's word.\n"
+    ]
+   },
+   {
+    "key": [
+     "f7c4ae0403d53bc0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "5. **Anchor.** Set `art.anchor` in `data/boardLandmarks.ts` to the footprint centroid's position in the keyed image (the render prints `centroid_raw_px`; apply the keyer's trim and scale). Set `gps` to the footprint centroid. A piece is pinned at its footprint or ink center, never at the drawing's bottom edge.\n"
+    ]
+   },
+   {
+    "key": [
+     "7ce5867f6e38b55d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "7. **Verify.** `npm run build`, then `node --import tsx scripts/verify-pieces.mjs --rendered <dump.json>` with a dump taken in the user's own Chrome (see `piece-review`). Do not import `verify-pieces.mjs` from another script; importing it launches its own headless browser.\n"
+    ]
+   },
+   {
+    "key": [
+     "705949f666c148f0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "From the header of `lib/pieceScale.ts` and the owner's rulings. Naming one of these under a new name is still proposing it.\n"
+    ]
+   },
+   {
+    "key": [
+     "278b8f11f3d3e754"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Pure true ground scale (2026-10-02: everything read too small).\n"
+    ]
+   },
+   {
+    "key": [
+     "066b451ea3c3b858",
+     "97c00804e5d324e7"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- Runtime rotation of a sprite to its footprint angle (the pieces looked like they were tumbling).\n",
+     "- A plan-view survey render (2026-10-03: disproportionately huge at full zoom-out). The one-camera survey render that replaced it was also rejected by eye on 2026-10-04; a correct camera did not make it the right weight.\n"
+    ]
+   },
+   {
+    "key": [
+     "14f0bf0b3b453e4f",
+     "2bae0ad2bafabc34",
+     "b0e996a33a6a12f1"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "5. When a choice is the owner's (palette, how much tower detail, whether the flat survey style suits the piece), show two to four rendered variations side by side; the owner reacts rather than specifying from scratch.\n",
+     "6. This pipeline changes no sizing constant. If the piece reads too big or too small, that is a ruling for the owner, with the full zoom-out table from `piece-review` in hand.\n",
+     "7. When the owner rules out something this skill does, add it to \"Rejected\" or Rules in the same turn.\n"
+    ]
+   }
+  ],
+  "skills/landmark-piece/references/footprints.json": [
+   {
+    "key": [
+     "e9370ae2e41f5788"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"source_note\": \"OSM way/72963089 fetched 2026-10-06; 13-node footprint, long side 55.9 m at 169 deg, width 49.8 m. Drawn with a 6 deg lean toward 288 (a design ruling, 2026-10-06), an exaggeration of the real ~0.2 deg.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "e2285180cfa97b99"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  \"_source\": \"the app repo's .agents/continuation-20261003/sprite-reconciliation.md (OSM API, measured 2026-10-03): minimum-area rectangle of each way/relation.\",\n"
+    ]
+   }
+  ],
+  "skills/landmark-piece/references/protected.json": [
+   {
+    "key": [
+     "834cd8715c7e93e1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  \"_note\": \"Pieces the owner has approved by name. The pipeline refuses to redraw or re-key them without the owner's word in this session. Add a row only from the owner's own words, with the commit.\",\n"
+    ]
+   },
+   {
+    "key": [
+     "52808b32ddf8867f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"note\": \"Approved by name as exactly right (2026-10-03).\",\n"
+    ]
+   }
+  ],
+  "skills/landmark-piece/scripts/camera_check.py": [
+   {
+    "key": [
+     "ca9f875da0a03af8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "down on the plan, against the project's rule \"one camera for the art\".\n"
+    ]
+   },
+   {
+    "key": [
+     "58dea11a811d62c8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                   f\"{plan / ((lo + hi) / 2):.1f}x the camera's. Render with CAMERA_ELEVATION_DEG = 30. The rule: one camera for the art.\")\n"
+    ]
+   },
+   {
+    "key": [
+     "6dadd00a8decc788",
+     "66fa682ce5b403c6"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "        print(f\"REFUSED: {a.slug} is an approved piece ({p['approved']}). {p['note']} \"\n",
+     "              f\"Do not redraw or re-key it without the owner's word in this session. {p['restore']}\")\n"
+    ]
+   }
+  ],
+  "skills/linkedin-carousel/SKILL.md": [
+   {
+    "key": [
+     "e08c7446979458a4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: Build a LinkedIn carousel (a 1080x1350 PDF document post) for wallywalks.app from the app's own pencil drawings, fonts, story text and real route, drawn in code rather than screenshotted, then stage it in the owner's LinkedIn composer for the owner to post. Use when the owner asks for a carousel, slides, \"compelling screenshots\", a map image, or images for a LinkedIn post about the walks. Never posts.\n"
+    ]
+   },
+   {
+    "key": [
+     "3267ddbc37e3583a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Six full-resolution slides that look like one object, every word taken from the app, staged in the composer beside the owner's post text, with the owner's click as the only way it goes live.\n"
+    ]
+   },
+   {
+    "key": [
+     "ac695d15018987c4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "2026-10-06, the first wallywalks.app post. Browser screenshots came out about 312 px wide in a phone frame and a backgrounded tab would not draw the map at all. Drawing the slides in code fixed both, and when the session later went back to the browser for the map, that was a step backward. The code-built set is what was posted.\n"
+    ]
+   },
+   {
+    "key": [
+     "93ef9bca07917dcf"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Text first, from the app.** Pick the walk (default: one sample walk, all its stops) and one stop whose `wallyStory` gives the app's own story quote. Export from the repo root:\n"
+    ]
+   },
+   {
+    "key": [
+     "30a86f3e4b600557"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "   Re-export right before building: other sessions rewrite stop text (on 2026-10-06 every stop was retold mid-session).\n"
+    ]
+   },
+   {
+    "key": [
+     "e91bdefac81e82d1",
+     "3c76aa9356870156"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "5. **Look at it before the owner does.** Contact sheet, then read every slide against the one before it. The check that caught a real problem: a quote that argues with the neighboring picture (a line saying a place is not its door and window, right after a drawing of the door and the window). Quotes keep their context or get swapped.\n",
+     "6. **Stage, never post.** In the owner's composer tab: `+` (Expand content types), Document, then set an `aria-label` on the hidden `input[type=file]` with JS, `find` it, `file_upload` the PDF, type a title without a colon, Done. To replace a PDF: the document's Edit link, the X on the file, upload again, Done. Verify the post text survived (length and a phrase) after every change.\n"
+    ]
+   },
+   {
+    "key": [
+     "db2d1bd11119bb67",
+     "5186568002d0b46b"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. Every word on a slide is the app's own text, verbatim, with the app's attribution. No new copy under the owner's name.\n",
+     "2. One aesthetic: paper `#F3EAD8`, ink, the walk's own color, the app's fonts. The map is drawn south-up like the app, with the app's own piece standing on its stop.\n"
+    ]
+   },
+   {
+    "key": [
+     "70780469f207c781"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "2026-10-06: the scripts, run end to end in a fresh folder from the export step, reproduced all six posted slides byte for byte. The `CAROUSEL_APP` setting was added after that run; it changes where the scripts find the app, not what they draw.\n"
+    ]
+   }
+  ],
+  "skills/linkedin-carousel/scripts/export_walk.mts": [
+   {
+    "key": [
+     "7691b58710abde60",
+     "b247906f13935975"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "// Writes stops.json and route.json for one sample walk, plus the story quote\n",
+     "// (`wallyStory`) of a named stop, read from the app's own data/routes.ts. Run from the repo root:\n"
+    ]
+   },
+   {
+    "key": [
+     "1083754e94171d67"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "if (!q) throw new Error(`no stop named \"${quoteStop}\" with a story quote (wallyStory)`);\n"
+    ]
+   }
+  ],
+  "skills/linkedin-carousel/scripts/make.py": [
+   {
+    "key": [
+     "83ac033a9c11e861"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # 4. The app's own story quote for the stop\n"
+    ]
+   }
+  ],
+  "skills/map-character/SKILL.md": [
+   {
+    "key": [
+     "7cc1302b07751c11"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Draw a REAL PERSON as a map sprite, alone or driving/riding something (golf cart, tractor, bike), in the map's storybook style and in every facing the sprite needs as it moves. Use when the owner says 'put <name> in the cart', 'add <person> to the map', 'make it face the way it is going', 'they look like a cliche', 'they are in the passenger seat', or sends photos of a person for a sprite. Built from a golf-cart sprite on a sister map project (2026-10-04), which took four rounds; this is the one-round method. Not for buildings or landmarks (landmark-piece) and not for the review gate (piece-review).\"\n"
+    ]
+   },
+   {
+    "key": [
+     "9f1efd8c5d0a2af4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "One round: a sprite of a specific person that LOOKS LIKE THEM, sits correctly in or on its vehicle, faces where it is going in every facing, and stays inside the vehicle's outline. The owner sees one contact sheet that already passes the checklist below.\n"
+    ]
+   },
+   {
+    "key": [
+     "79dfe2fb92fd14be"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A golf-cart sprite of a real person on a sister map project (2026-10-04) took four rounds and four corrections, each a failure this skill now prevents:\n"
+    ]
+   },
+   {
+    "key": [
+     "5ab510b60698ac2f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. A generic cliche person. Cause: the prompt named an age category, and the model drew the category, not the person. The correction: look at the pictures.\n"
+    ]
+   },
+   {
+    "key": [
+     "fe4a2c064d84412f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "3. Hands in the lap instead of on the wheel.\n"
+    ]
+   },
+   {
+    "key": [
+     "4e5fb7b2e3a54788"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Look at every photo the owner sends and write 5 to 7 concrete traits: build and posture, hair (length, direction, volume, color), glasses (shape, rim), signature expression, how they dress (cut, collar, the color they usually wear; the owner names it if known). BAN category words that summon a stereotype: elderly, grandma, old man, cute, little. Add explicit negatives for the stereotype the category would produce (\"not tight curls, not round wire glasses\"). Show the owner the trait list only if the photos disagree with each other.\n"
+    ]
+   },
+   {
+    "key": [
+     "f91282ac08cc8fc9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Three tries per edit, in parallel. The sister project kept these as small scripts, one per fix (the seat; the head under the roof); they are not shipped with this plugin.\n"
+    ]
+   },
+   {
+    "key": [
+     "d64484fa68220af8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A US golf cart, car or tractor has its controls on the vehicle's LEFT. The viewer is always below the sprite. So: heading RIGHT shows the vehicle's right flank and the driver is in the FAR seat; heading LEFT shows the left flank and the driver is in the NEAR seat. Say it that way in the prompt, plus: \"the other half of the seat is EMPTY\", \"shoulders, chest and face point the same way the vehicle's front points\", \"both hands on the wheel directly in front of the driver\", \"does not turn to the viewer or face out of the side\". A mirrored front view for the opposite heading was accepted as long as the driver is behind the wheel and driving; the binding test is behind-the-wheel, hands-on, facing-forward, not left-hand drive in every frame.\n"
+    ]
+   },
+   {
+    "key": [
+     "0c2c1832e195db2e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Always include: \"the whole head, including the top of the hair, sits clearly below the canopy's lower edge with a gap of air; the canopy edge and posts pass in front of or above the driver\". If a keeper still overlaps, run the narrow head edit, not a redraw.\n"
+    ]
+   },
+   {
+    "key": [
+     "ca0d58cff331f161"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "### 6. Checklist on a ZOOMED crop, before the owner sees anything\n"
+    ]
+   },
+   {
+    "key": [
+     "0042ee7298c807d8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- [ ] Cut-out has no white halo\n"
+    ]
+   },
+   {
+    "key": [
+     "70ef17d78c8a6f98"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A contact sheet is NOT the check: a back view's hands-in-lap and a head over the roof were visible only zoomed. Never describe a candidate as \"ruled out\" in chat unless it is also absent from anything the owner can open; the owner reviews raw files too.\n"
+    ]
+   },
+   {
+    "key": [
+     "6d2c4a5e3370fc23"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Choose the drawing from the heading over a short lookahead: front when moving down the map, back when moving up, `scaleX(-1)` for left. Use enter/exit thresholds (the sister project: up-share > 0.3 to switch to the back view, < 0.1 to switch back) so it never flickers on a level stretch; simulate one lap and report the share per facing and switches per lap.\n"
+    ]
+   },
+   {
+    "key": [
+     "314081918284b109"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The owner has seen one contact sheet of all facings that passed step 6, said deploy, and the live sprite files compare byte-equal to the local ones on a cache-busted fetch.\n"
+    ]
+   }
+  ],
+  "skills/map-preflight/SKILL.md": [
+   {
+    "key": [
+     "f5915270cc3a26e3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Catch what an outside audit would catch on a hand-drawn walking-map app, BEFORE the audit or a deploy: the cart loop off the painted road, road color breaks, ghost strokes, small animals drawn large, overlapping _headers rules, files in public/ nothing uses, text contrast, hunt targets that give themselves away, small tap targets, dev-server origins; then the browser checks a script cannot do (focus under the bar, desktop blank paper, true 390 px viewport, pieces sharp at full zoom). Use when the owner says 'preflight', 'check it before the audit', 'is it ready to deploy', 'catch these before an audit', 'run the checks', or before any deploy of a City Walks map. Not the repairs themselves (map-repair) and not a piece's art review (piece-review).\"\n"
+    ]
+   },
+   {
+    "key": [
+     "501e4fcb917ed87b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Every finding an outside audit of a sister map project made on 2026-10-04 is found here first, by a script or by a named look, so an audit only finds new things.\n"
+    ]
+   },
+   {
+    "key": [
+     "743b88245005098b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The audit caught 17 defects nothing in the build had caught: the loop crossing trees, a ghost tree, a duplicate set of gravestones, an empty sign oval, a place landing under the bar, blank paper on desktop, 2.9:1 text, hunt quail announced to screen readers, a contradictory Cache-Control, nine skipped photos still served. The ask that followed: skills that catch these things before an audit. Later the same day, screenshots caught four more: ghost road strokes under trees, ghost tracks across a paddock, a sloppy road junction, a garden angled into a house. The script checks below were each run against the morning's known-bad state (git 44620f5) and seen to FAIL or WARN on it before they were trusted.\n"
+    ]
+   },
+   {
+    "key": [
+     "4f136b851c4a8e0c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Exit 1 on any FAIL. Paths are in `CFG` at the top of the script (the sister project's layout); `piece_scale` has the project's px-per-meter. Spots the owner has ruled stay as they are go in `<repo>/.preflight-accept.json` with the ruling quoted in `why`; never accept a spot to make the run pass. Check names are identifiers: `road_continuity_colour` keeps its spelling so existing accept files still match.\n"
+    ]
+   },
+   {
+    "key": [
+     "9233252da28ddf48"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| road_continuity_colour | a long stretch of road bed in another color (canopy, a seam) | top lane under the tree row |\n"
+    ]
+   },
+   {
+    "key": [
+     "618aad6b1da00310"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| text_contrast | text color tokens under 4.5:1 on the card | --muted 3.56, --sunset 2.88 |\n"
+    ]
+   },
+   {
+    "key": [
+     "dbd0d2daeaa8910a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Run the app (`npm run dev`, open http://localhost:<port>, never 127.0.0.1 unless it is allowed) in the user's own Chrome, one tab (shared-chrome).\n"
+    ]
+   },
+   {
+    "key": [
+     "88e92d57abfb129f",
+     "c63e2de73b3a782d"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. **True phone width.** Window resizes lie. Load the app in an iframe of exactly 390x844 from a same-origin page and read `innerWidth` from inside the frame; it must say 390. Delete the harness page after.\n",
+     "2. **Focus lands in the open area.** With the bar collapsed, tap three places (one near each map edge) and measure: the place's center must sit between the title strip and the bar's top AFTER the bar opens. Same on desktop with a place near the bottom-right edge.\n"
+    ]
+   },
+   {
+    "key": [
+     "c7617765ccfc53e0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Report each check as PASS / WARN / FAIL with what was looked at, then the WARNs that need the owner's ruling as yes/no questions.\n"
+    ]
+   },
+   {
+    "key": [
+     "cf33dee4cc2b19a5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- A FAIL that cannot be fixed without changing a ruling goes to the owner as a question, never into the accept file.\n"
+    ]
+   }
+  ],
+  "skills/map-preflight/scripts/preflight.py": [
+   {
+    "key": [
+     "fdf228ea2a2315b2",
+     "6fffccf3b88add61"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "\"\"\"Pre-audit checks for a hand-drawn walking map app (the layout of a sister\n",
+     "map project by default; see CFG). Every check here is one an outside audit caught on 2026-10-04 that\n"
+    ]
+   },
+   {
+    "key": [
+     "a50763290202dec5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "INK = 130         # darker than this (0-255 gray) is an ink line\n"
+    ]
+   },
+   {
+    "key": [
+     "699497a7dd48b433"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Spots the owner has ruled stay as they are: <repo>/.preflight-accept.json,\n"
+    ]
+   },
+   {
+    "key": [
+     "e1a580f0505d4a0a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"The road bed under the loop is one color; a dark stretch is road under canopy or a seam.\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "ceaf75b79e1106ec"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    report(\"road_continuity_colour\", \"WARN\" if bad else \"PASS\", f\"road bed median RGB {med.round().astype(int).tolist()}; {len(bad)} long off-color stretch(es)\",\n"
+    ]
+   },
+   {
+    "key": [
+     "b97f1e60d09575a5",
+     "618be7190e3cb5b3",
+     "a55ff6eb873b60b6"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "    px_m = 7.0759  # map px per meter of the sister project; set per project\n",
+     "    small = {\"quail\", \"owls\"}   # small-animal piece ids, and any id that starts \"<one of these>-\"\n",
+     "    is_small = lambda i: i in small or i.split(\"-\", 1)[0] in small\n",
+     "    big = [f\"{p['id']}: {max(p['w'], p['h']) / px_m:.1f} m\" for p in pieces if is_small(p[\"id\"]) and max(p[\"w\"], p[\"h\"]) / px_m > 3]\n"
+    ]
+   },
+   {
+    "key": [
+     "dc47e673f4576fb3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Text color tokens reach 4.5:1 on the card color.\"\"\"\n"
+    ]
+   }
+  ],
+  "skills/map-repair/SKILL.md": [
+   {
+    "key": [
+     "087704b40000a69f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"The methods that fixed a sister map project's map on 2026-10-04, for any tile-stitched storybook map: erase an invented feature or ghost, draw a missing road or a clean junction in the map's own hand, put the cart loop on the painted road, move/rotate/resize a piece, sharpen the whole map without redrawing it, and keep pieces as sharp overlays. Use when the owner says 'ghost', 'glitch', 'smudge', 'erase the X', 'road lines show under trees', 'sloppy connection', 'missing road', 'the loop is off the road', 'the cart drives through trees', 'the map is fuzzy', 'sharper', 'pieces are fuzzy', 'too big', 'at an angle', or reports a map defect with a screenshot. Run map-preflight after. Not for drawing a new piece (landmark-piece) or a person (map-character).\"\n"
+    ]
+   },
+   {
+    "key": [
+     "c485501b866c0aa0"
+    ],
+    "ctx": 0,
+    "old": 0,
+    "new": [
+     "The scripts named below (repair.py, roads.py, surgery.py, place-pieces.py, superres.py, trace-loop.py and the rest) are that project's own pipeline and are not shipped with this plugin; the methods are what carries over.\n",
+     "\n"
+    ]
+   },
+   {
+    "key": [
+     "0f53a9a453276056",
+     "98728415bd0ef103",
+     "2aec5d02ffa1c34a"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "- Snapshot every image you will change to `.backups/<timestamp>/` (nothing that existed is ever unrecoverable).\n",
+     "- Confirm the chain reproduces today's map byte-for-byte from its caches before changing a step (for example: `map.png -> repair.py -> roads.py -> surgery.py -> place-pieces.py -> export-map-data.py -> compose-frame.py`; compare md5 of map-pieces.png).\n",
+     "- Locate the reported screenshot on the map by template matching against a downsized copy of the map (scales 0.08-0.6); do not guess coordinates.\n"
+    ]
+   },
+   {
+    "key": [
+     "dc23e9a279733288",
+     "0b2febd65e2c6508",
+     "52f24b67e9c46f4e"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "| missing road, bad junction, faint strokes in a road bed | roads.py band along a polyline in red, Gemini draws the road in the map's hand, copy back only the band; magenta patches for ground | a road inked by code read as discolored and sloppy |\n",
+     "| loop off the road | tools/trace-loop.py: exact band centerlines where roads.py drew, hand guides where not (row-scan the ink edges to find the middle), then nudge each point to the middle of the NEAREST ink edge on each side when that gap is road width | Google's line rode edges and crossed trees; \"move to the clearest ground\" jumps off the road |\n",
+     "| piece too big, angled, wrong spot | place-pieces.py SIZES (meters), POSITION_OVERRIDES, ROTATE (measure the drawing's angle with cv2.minAreaRect), FLIP | deterministic; quail coveys 2.6 m, hunt quail 10 map px |\n"
+    ]
+   },
+   {
+    "key": [
+     "46b0c5b3b75cd495"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Rules that bit:\n"
+    ]
+   },
+   {
+    "key": [
+     "a68a40e6d3858140"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- No color boost on small gray animals: it turned quail rust red.\n"
+    ]
+   },
+   {
+    "key": [
+     "a3fdca368467561c",
+     "169243c88bf77d4c"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "4. In the running app at full zoom, in the user's own Chrome, one tab.\n",
+     "5. One commit per concern; deploy only on the owner's word, then poll the live content and curl the headers.\n"
+    ]
+   }
+  ],
+  "skills/new-city/SKILL.md": [
+   {
+    "key": [
+     "12f4601bf2cd6875"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Stand up a new hand-drawn walking-map city on the City Walks Template pipeline: nine gated stages, one overlay file, a human's word required at three points. Runs inside a checkout of the City Walks Template repo.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "165edf2a90ccab98"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "`city/README.md` and `docs/city-lessons.md` before touching anything. The\n"
+    ]
+   },
+   {
+    "key": [
+     "bbdbda99af1a52ee"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "finding: stop, explain the case, and let the human decide whether to change\n"
+    ]
+   },
+   {
+    "key": [
+     "f0157c4ca3dffb4c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "plates → prompts → ship`. Don't skip ahead: `places` depends on `research`'s\n"
+    ]
+   },
+   {
+    "key": [
+     "142ab76b986d4173",
+     "1f4c0a81d8d1bcb0"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- **PASS**: checked, and it's right.\n",
+     "- **FAIL**: checked, and it's wrong. Fix the data (or the code that produces\n"
+    ]
+   },
+   {
+    "key": [
+     "76a9656e73533a7e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- **SKIP**: the check couldn't run yet (usually: the stage hasn't started).\n"
+    ]
+   },
+   {
+    "key": [
+     "cbeef6c618878154"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "fired automatically by the CLI. Spend money deliberately, once, having\n"
+    ]
+   },
+   {
+    "key": [
+     "e2c9864eae03fd88"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "   enforces the ordering by file mtime; see `lock-art-direction-first` in\n"
+    ]
+   },
+   {
+    "key": [
+     "2870c7c8b819eb9b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "2. **Ship / deploy.** The `gate ship` check for deploy always reports SKIP:\n"
+    ]
+   },
+   {
+    "key": [
+     "cd7df01da29b25f2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "   while any remain. Verify against OSM, record a `source`, then flip it.\n"
+    ]
+   },
+   {
+    "key": [
+     "4e611fe35de388ee"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "worked-example authoring lean on agents doing open-ended work: research\n"
+    ]
+   },
+   {
+    "key": [
+     "12fd5558e0070a85"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "shape; Bend's landlocked flat2d lane vs. SF's charcoal lane already show the\n"
+    ]
+   },
+   {
+    "key": [
+     "7b3fe72f3cb5c5bd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "special-case a city by hand-editing a generated file; see\n"
+    ]
+   }
+  ],
+  "skills/pages-preview/SKILL.md": [
+   {
+    "key": [
+     "ec74496401c4f8c7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Deploy the SF City Walks working tree to the PREVIEW at test.wallywalks.app (Cloudflare Pages project wallywalks-app, branch test) and prove it: build, swap wrangler.wallywalks-app.toml in, deploy, restore wrangler.toml and prove it with git diff, verify the served build identity and /api/me, and run the cache checklist. Use when the owner says 'deploy to test', 'put it on the test link', 'can you deploy to cloudflare' for testing, 'phone test build', 'is test up to date'. Never deploys production: 'deploy to wallywalks.app' is a separate step on the owner's word and this skill refuses it.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "3e0a58b152b72ba7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The owner opens test.wallywalks.app on a phone and sees exactly the build that was just made, with production untouched and the repo's config back as it was.\n"
+    ]
+   },
+   {
+    "key": [
+     "131b0cc1a52e7165",
+     "2766622fa3f103e7"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- The owner's word for a preview deploy in this session. A general \"keep going\" is not it.\n",
+     "- Branch `wallywalks-app`. Read the project's deploy-target notes first; obligatory.\n"
+    ]
+   },
+   {
+    "key": [
+     "efa2c94b96ceb4c0"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "- `CITY_WALKS_REPO` names the map repo (the script refuses to run without it).\n"
+    ]
+   },
+   {
+    "key": [
+     "961db2cbccdc98e0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Cache checklist, before building.** If the route source or the step shape changed since the last deploy: bump `ROUTE_API_VERSION` in `lib/customWalks.ts` AND the worker cache key (`route-foot-vN`) in the API worker's catch-all route file under `functions/api/`. Browsers cache `/api/route` answers 7 days per URL; the edge caches by key. Changing one without the other leaves stale routes on phones.\n"
+    ]
+   },
+   {
+    "key": [
+     "8fe4a3c29bc6d92e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "6. **Report** from the owner's screen: the URL, what they will see, what was verified and what was not.\n"
+    ]
+   },
+   {
+    "key": [
+     "ae82d99d9426dbc8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. Reading the project's deploy-target notes is obligatory before step 1.\n"
+    ]
+   },
+   {
+    "key": [
+     "7cb3c5e77edf73de"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "7. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   },
+   {
+    "key": [
+     "e0a9cc74f4183b60"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The deployment URL, each verification line with its result, the exit code, the byte-comparison proof for `wrangler.toml`, and the one sentence the owner needs to try it. The script's `--go` path has not been run since it was rewritten on 2026-10-04 (tests use mocks); say so on its first real run and read its output closely.\n"
+    ]
+   }
+  ],
+  "skills/pages-preview/scripts/preview_deploy.sh": [
+   {
+    "key": [
+     "8f8b928b993c8751"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# Production (main, wallywalks.app) is REFUSED. It is a separate step on the owner's word.\n"
+    ]
+   },
+   {
+    "key": [
+     "5af98c8afe655edc"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# The map repo: CW_PREVIEW_REPO, else CITY_WALKS_REPO. main() refuses to run without one.\n",
+     "REPO=\"${CW_PREVIEW_REPO:-${CITY_WALKS_REPO:-}}\"\n"
+    ]
+   },
+   {
+    "key": [
+     "e0e1a7b90f2980e5"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "  [ -n \"$REPO\" ] || { echo \"REFUSED: set CITY_WALKS_REPO (or CW_PREVIEW_REPO) to the map repo.\" >&2; return 4; }\n"
+    ]
+   },
+   {
+    "key": [
+     "5423cf89ad01b63b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    echo \"(dry run: nothing was built, deployed or changed. Re-run with --go on the owner's word.)\"\n"
+    ]
+   }
+  ],
+  "skills/piece-review/SKILL.md": [
+   {
+    "key": [
+     "f8c76538c4fb3cd2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Review one landmark piece on the live local SF City Walks map in the states people see it, and save the evidence: full zoom-out with a px size table beside its neighbors, close zoom against its OSM outline, and zoom motion both ways through z13 to 16 with frames counted. Use after any piece is drawn, keyed, moved, sheared or re-anchored, before saying it is fixed, and when the owner says 'it's huge', 'too big at zoom out', 'floaty', 'did you look at it', 'check it zoomed out', 'review the piece'. A Stop hook checks replies that call a piece fixed against this review's evidence; it is a tripwire that can be missed or misfire, not a guarantee.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "9e2f4d52dab97e75"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A dated folder that proves the piece was looked at where people look: full zoom-out, close zoom, and in motion. A piece checked at one end only is not reviewed.\n"
+    ]
+   },
+   {
+    "key": [
+     "80157c5d5a7c9251"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "On 2026-10-03 a de Young render was checked only at close zoom and shipped far heavier than its neighbors at full zoom-out (\"disproportionately huge on full zoom out\"). The rule already existed (size is judged at full zoom-out AND in zoom motion); nothing enforced it. The lesson: a visual change is verified by looking at it in use.\n"
+    ]
+   },
+   {
+    "key": [
+     "425258d1b719d615"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "claude-in-chrome in the user's own Chrome (follow `shared-chrome` first), Bash, the local preview. The repo's own runtime is fixed to `http://127.0.0.1:3777` (`npm run demo`; `scripts/local-runtime.mjs` refuses port overrides). The 2026-10-03 sign-in work used an ad hoc server on `http://localhost:3881`; use that only when sign-in is under test, and confirm the origin in the Google console first. Never chrome-devtools, never a headless browser, never `screencapture`.\n"
+    ]
+   },
+   {
+    "key": [
+     "46242d261b1729c1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "All files go in `$CITY_WALKS_REPO/review-<YYYYMMDD>/<slug>/`.\n"
+    ]
+   },
+   {
+    "key": [
+     "0f5feb5a3071a9c9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "   It sizes each version by the map's own contract (`components/LiveMap.tsx`, `lib/pieceScale.ts`) and reports three things apart: DISPLAYED SIZE, DISPLAYED INK, SHAPE ONLY, plus a DUMP CHECK (is the piece drawn at the size the contract gives). Exit 1 is a flag (a change to look at), exit 3 is NOT REVIEWED (span, hidden piece, empty dump, no sizeM). Name the baseline honestly: the script does not know which revision the owner approved. Then LOOK at `zoomout.jpg` beside the neighbors and say in chat what is seen.\n"
+    ]
+   },
+   {
+    "key": [
+     "cb04db13a21c0afd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "8. **Report** what was looked at, at which viewport and zooms, and what was not. Then, and only then, the word \"fixed\" may be used, and it stays the owner's call whether it is done.\n"
+    ]
+   },
+   {
+    "key": [
+     "7df094fcbd728871",
+     "e7b15bee6333e001"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "3. The table prints the spread of ink per real square meter across the shown ground pieces of the dump it was given. On the 2026-10-03 opening dump that spread was several-fold, so one piece cannot be judged against its neighbors by that number; the flags compare a version with the version it replaces. The neighbors are judged by eye on the capture; say what is seen. A flag is never a verdict on the art: the approved Ferry Building restoration measures about half the ink of the HEAD piece it replaced and 1.00x against the approved `c3b44f7`.\n",
+     "4. A passing number is a floor, never the verdict. The owner's eyes are ground truth; if the owner says it is huge, it is huge.\n"
+    ]
+   },
+   {
+    "key": [
+     "b3150096cee3171f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "6. A piece hidden at full zoom-out (below the 14 px threshold) has no full zoom-out size. Say it is hidden; that is a finding for the owner, not a pass.\n"
+    ]
+   },
+   {
+    "key": [
+     "567435c0b1e685a6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "8. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   },
+   {
+    "key": [
+     "eb704426063f5f93"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "`review-<YYYYMMDD>/<slug>/` with `rendered-zoomout.json`, `zoomout-table.md`, `zoomout.jpg`, `close-outline.jpg`, `zoom-motion.json`, and a chat report naming the click path: local preview, zoom all the way out, find the piece beside its neighbors.\n"
+    ]
+   }
+  ],
+  "skills/piece-review/references/browser-snippets.md": [
+   {
+    "key": [
+     "09cead7f59e5e9cb"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Run in the user's own Chrome through claude-in-chrome's `javascript_tool`, in the task tab, on the local candidate. The repo's runtime is fixed to `http://127.0.0.1:3777` (`npm run demo`); the map handle `window.__wwMap` is set only on local hosts (read the condition in `components/LiveMap.tsx` before relying on it). Follow `shared-chrome` first.\n"
+    ]
+   }
+  ],
+  "skills/piece-review/scripts/review_gate.py": [
+   {
+    "key": [
+     "00c2e496224739f1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# The map app's repo: CITY_WALKS_REPO, or --repo on the command line.\n",
+     "REPO = os.path.expanduser(os.environ.get(\"CITY_WALKS_REPO\", \"\"))\n"
+    ]
+   },
+   {
+    "key": [
+     "cdce6cdc7d483997"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                miss.append(f\"{slug} is HIDDEN at full zoom-out in the dump: there is no full zoom-out size to review (a finding for the owner, not a pass)\")\n"
+    ]
+   },
+   {
+    "key": [
+     "a0ecbae24c504c6c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        a = ap.parse_args()\n",
+     "        if not a.repo:\n",
+     "            sys.exit(\"set CITY_WALKS_REPO to the map repo, or pass --repo\")\n",
+     "        stamp(a.slug, a.motion, a.repo); sys.exit(0)\n"
+    ]
+   },
+   {
+    "key": [
+     "6c89c8f8eacd54dc"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "    if not a.repo:\n",
+     "        sys.exit(\"set CITY_WALKS_REPO to the map repo, or pass --repo\")\n"
+    ]
+   }
+  ],
+  "skills/piece-review/scripts/weight_table.py": [
+   {
+    "key": [
+     "824a197ff6bf2390"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  - the dump gives px per real meter at full zoom-out: the median, over shown\n"
+    ]
+   },
+   {
+    "key": [
+     "f49edacdc394205e",
+     "a4d48026573e4017"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "    (px per meter x sizeM) / inkOfBox;\n",
+     "  - an upright piece (|inkAxisDeg| >= 60) is drawn by height: px per meter x\n"
+    ]
+   },
+   {
+    "key": [
+     "6ffaed01af84e5ae"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "def px_per_meter(dump, wt, exclude=None):\n"
+    ]
+   },
+   {
+    "key": [
+     "c78dd6f1c3f44665"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    ppm, n, spread = px_per_meter(dump, wt, exclude=slug)\n"
+    ]
+   },
+   {
+    "key": [
+     "50eff1b610593b59"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    L.append(f\"scale read from the dump: {ppm:.4f} px per real meter (median of {n} other ground pieces; they range {spread[0]:.4f} to {spread[1]:.4f})\")\n"
+    ]
+   },
+   {
+    "key": [
+     "1393b33a5f6ab76f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            L.append(\"DUMP CHECK: the piece is HIDDEN at full zoom-out in this dump. There is no observed size; a finding for the owner, not a pass.\")\n"
+    ]
+   },
+   {
+    "key": [
+     "924008a61b62d4ab",
+     "4d3eaa7e98cb687c"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "        L.append(f\"NOTE: {slug} is a piece the owner approved by name ({prot['approved']}). A change measured against any OTHER baseline says nothing against the approved art.\")\n",
+     "    L.append(\"The baseline is a point of comparison. Nothing here knows whether the owner approved it.\")\n"
+    ]
+   },
+   {
+    "key": [
+     "6c89c8f8eacd54dc"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "    if not a.repo:\n",
+     "        print(\"set CITY_WALKS_REPO to the map repo, or pass --repo\", file=sys.stderr); sys.exit(2)\n"
+    ]
+   }
+  ],
+  "skills/shared-chrome/SKILL.md": [
+   {
+    "key": [
+     "84d8c7d86d5968b6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Preflight for driving the user's own Chrome when other Claude sessions share it: find busy sessions, get and verify this session's own window and tab, test whether the page is visible and rendering, and pick the right capture method for stills versus real-time motion. Use before any claude-in-chrome work on the SF City Walks map or any map or canvas page, and when a tab freezes, a screenshot is stale, MapLibre stalls, a tab lands in the wrong window, or timings look wrong. Extends the claude-in-chrome skill; does not replace it.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "e57e54f3cf984b67"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Browser evidence that is real: taken in this session's own tab, in a page that was actually rendering, without the user touching a window.\n"
+    ]
+   },
+   {
+    "key": [
+     "a775f2562e00c2eb"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "On 2026-10-03 a session created several tabs and windows while debugging a shared, backgrounded Chrome, moved a tab out of its group and lost it, and asked the user to bring a tab group forward, something that had never been needed before. The lesson: several Claude sessions share one Chrome, so plan for it instead of fighting it.\n"
+    ]
+   },
+   {
+    "key": [
+     "fc2124785529abc0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "5. **Real-time motion only when visible.** If motion must be checked and the page is hidden, raise only this session's own window through Chrome's Window menu (by its tab title). If that fails, report the motion check as NOT done. Do not ask the user to arrange windows.\n"
+    ]
+   },
+   {
+    "key": [
+     "c229bda41d873f8f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "7. **Clean up.** Close research tabs. Leave the one task tab only if the user is meant to look at it; say so.\n"
+    ]
+   },
+   {
+    "key": [
+     "544f11285d15f552"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. The user's logged-in Chrome only. Never chrome-devtools, never a test or headless browser, never Playwright, QA included.\n"
+    ]
+   },
+   {
+    "key": [
+     "a3aec83fbea62a67"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. Never ask the user to manage windows, Spaces or tab groups.\n"
+    ]
+   },
+   {
+    "key": [
+     "7cb3c5e77edf73de"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "7. When the user rules out something this skill does, add it here in the same turn.\n"
+    ]
+   }
+  ],
+  "skills/walk-cycle/SKILL.md": [
+   {
+    "key": [
+     "8749f237b8ed7c83"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Make or remake an animated sprite sheet for a map character on SF City Walks / wallywalks.app from one approved drawing: walk-cycle frames by image EDITS of the approved pose, thresholded to ink, aligned on one baseline, indexed with a frames count. Use when the owner wants a character animated, a new facing (back view, side view), or says the cycle looks wrong. Built from the walker's silhouette on 2026-10-06; for a new person's likeness use map-character first.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "ac7086cf327709a4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A sheet of N frames in one row, same height, feet on one line, one flat ink color, that reads as walking at 44 px, built in one round and shown to the owner as a contact sheet before it is wired.\n"
+    ]
+   },
+   {
+    "key": [
+     "887b201fbfdccab8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. Object record first (README, \"Object records\"): the piece_gate blocks sprite scripts without it, and the record says what the owner approved.\n"
+    ]
+   },
+   {
+    "key": [
+     "a33aa922c81641e3",
+     "4bbfeead7bc94f41"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "3. Frames by EDITING the reference with `scripts/_gemini-gen.mjs` (`gemini-2.5-flash-image`), three tries per phase in parallel, prompt shape: \"Edit IMAGE 1 ... Keep everything identical: ... Change ONLY the figure's legs and arms to this phase of the walking stride: <phase>.\" A flat silhouette needs only three new side phases (closing, passing, opening) plus the approved pose as frame 0; the back view needs two (apart, together) plus their mirrors. Phases the model copies instead of changing are dropped, not re-prompted more than once.\n",
+     "4. `python3 scripts/sprites/walk-cycle.py walker check <frames>` rejects a frame with more than one ink blob or an aspect far from the approved pose; `... walker build <frame0> <frame1> ... --out <dir>` thresholds to the ink color, scales to 192 px, pads to a common box, pastes feet on one baseline, writes the sheet and a 2x contact sheet with the approved drawing first.\n"
+    ]
+   },
+   {
+    "key": [
+     "3dd507b6da0c5713"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   }
+  ],
+  "skills/walker-motion/SKILL.md": [
+   {
+    "key": [
+     "e5ad20ad73987540"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Diagnose and fix how the walker (the map's avatar) moves on the SF City Walks / wallywalks.app map: moonwalking (drifting against the street), walking in place, facing the wrong way, treading too fast, flickering between sheets. Use when the owner says 'moonwalking', 'walks in place', 'faces sideways', 'it does not rush', or anything about the avatar's motion. Built from the 2026-10-06 session that fixed all five; not for drawing the walker (map-character) or sizing pieces (pieceScale rules).\"\n"
+    ]
+   },
+   {
+    "key": [
+     "204cc75a9d21a983"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The walker moves the way a person walks: along the street, facing where it goes, legs moving only when it moves, at a stroll. The owner judges it by eye on the mock walk; the numbers below are how to find the cause before changing anything.\n"
+    ]
+   },
+   {
+    "key": [
+     "0e2bbf9722c47187"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "## Diagnose first (one minute, in the user's own Chrome on the mock walk)\n"
+    ]
+   },
+   {
+    "key": [
+     "a64b6bb4380c20ad"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- `facing` flipping between `right`/`left`/`away` on a straight street: hysteresis gone, or the bearing sign is wrong (`map.getBearing()` returns -180..180; normalize).\n"
+    ]
+   },
+   {
+    "key": [
+     "77e93ee18133b40e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. Never change a constant without the sample above before and after; the owner's eye is the verdict, the sample is the cause.\n"
+    ]
+   },
+   {
+    "key": [
+     "8e754349c8a26288",
+     "7ee074fff1e8bd63"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "4. Before touching the sheets or facing, write the object record for `walker` (README, \"Object records\"; the piece_gate requires it).\n",
+     "5. When the owner rules out something this skill does, add it here in the same turn.\n"
+    ]
+   },
+   {
+    "key": [
+     "0e017756194faff7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The owner has watched the mock walk with the tab in front and said it looks right; the sample shows x/y monotonic along the street, frames advancing only with distance, one facing per straight stretch.\n"
+    ]
+   }
+  ],
+  "tests/camera_cases.py": [
+   {
+    "key": [
+     "fb9f57f1828d58d9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "REPO = os.environ.get(\"CITY_WALKS_REPO\") or sys.exit(\"set CITY_WALKS_REPO to the map repo\")\n"
+    ]
+   }
+  ],
+  "tests/deploy_cases.sh": [
+   {
+    "key": [
+     "4b23b611ac041c1c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  grep -c \"_buildManifest\" \"${CITY_WALKS_REPO:?set CITY_WALKS_REPO}/out/index.html\" | sed 's/^/LEGACY build-id regex (_buildManifest) matches in the real exported homepage: /'\n"
+    ]
+   }
+  ],
+  "tests/gate_evidence_cases.py": [
+   {
+    "key": [
+     "f865561fc2fe3029",
+     "2b726768b19788ec",
+     "ee8e261d6eef0bb2"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "body = lambda gen, brief: f\"# Object record\\ngenerated: {gen}\\n## 1. git history\\n## 4. written rulings\\n## 5. Owner's own words\\n## 6. Brief\\n{brief}\"\n",
+     "blank = \"- Decided, by whom, when:\\n- Rejected (do not repeat):\\n- Approved version (sha, date, the owner's words):\\n- What my planned change touches, and which ruling covers it:\\n\"\n",
+     "good = \"- Decided, by whom, when: off the map, the owner, 2026-10-04\\n- Rejected (do not repeat): plan-view render, image-model redraws\\n- Approved version (sha, date, the owner's words): none; the owner removed it\\n- What my planned change touches, and which ruling covers it: nothing without the owner's word\\n\"\n"
+    ]
+   },
+   {
+    "key": [
+     "ac5008a76b9b6f0a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "hook = os.path.join(ROOT, \"hooks/piece_gate.py\"); R = os.environ.get(\"CITY_WALKS_REPO\") or sys.exit(\"set CITY_WALKS_REPO to the map repo\")\n"
+    ]
+   }
+  ],
+  "tests/hook_cases.py": [
+   {
+    "key": [
+     "1ca91b2df0834ce7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "R = os.environ.get(\"CITY_WALKS_REPO\") or sys.exit(\"set CITY_WALKS_REPO to the map repo\")\n"
+    ]
+   },
+   {
+    "key": [
+     "aa5e65dbd285055a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     " (\"../ normalized path\", 2, B(f\"cp /tmp/x.png components/../{SP}/coit-tower.png\")),\n"
+    ]
+   },
+   {
+    "key": [
+     "cc80d83f6fa11a86"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     " (\"sibling repo prefix (<repo>-2)\", 0, B(f\"cp /tmp/x.png {SP}/coit-tower.png\", cwd=R + \"-2\")),\n"
+    ]
+   },
+   {
+    "key": [
+     "2700fff27a5e2733"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     " (\"other repo\", 0, S(\"The de Young is fixed.\", cwd=os.path.expanduser(\"~\"))),\n"
+    ]
+   }
+  ],
+  "tests/return_path_case.py": [
+   {
+    "key": [
+     "3f24d1f850b92482"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "after sign-in. Fixed in the working tree 2026-10-04 on the owner's word. This test says\n"
+    ]
+   },
+   {
+    "key": [
+     "cf12d0b0172ef246"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "REPO = os.environ.get(\"CITY_WALKS_REPO\") or sys.exit(\"set CITY_WALKS_REPO to the map repo\")\n",
+     "src = open(os.path.join(REPO, \"functions/api/[[route]].ts\"), encoding=\"utf-8\").read()\n"
+    ]
+   }
+  ],
+  "tests/weight_cases.py": [
+   {
+    "key": [
+     "1ca91b2df0834ce7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "R = os.environ.get(\"CITY_WALKS_REPO\") or sys.exit(\"set CITY_WALKS_REPO to the map repo\")\n"
+    ]
+   }
+  ]
+ }
+}
