@@ -1,0 +1,9 @@
+{
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "attachmentFolderPath": "Resources/attachments",
+  "userIgnoreFilters": [
+    "/\\.backups\\//"
+  ]
+}

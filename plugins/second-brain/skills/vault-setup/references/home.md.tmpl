@@ -1,0 +1,126 @@
+---
+title: "[Vault Name]"
+type: home
+cssclasses:
+  - home
+---
+
+# [Vault Name]
+
+[One plain sentence about what this vault is for, in the owner's own terms, drawn from the interview. Not a description of the software. "Client work, the certification, and everything I keep forgetting to write down" is right. "A personal knowledge management system" is wrong.]
+
+## Today
+
+- [[Daily/{today}|Today's note]]
+	- Everything from today. Start here most mornings.
+- [[Tasks/todo|What is open]]
+	- The live list. Things end up here from conversations.
+
+## Active work
+
+```base
+filters:
+  and:
+    - 'type == "project"'
+    - file.inFolder("Projects")
+properties:
+  file.name:
+    displayName: Project
+  note.status:
+    displayName: Status
+  note.next_step:
+    displayName: Next step
+  note.last_touched:
+    displayName: Last touched
+views:
+  - type: table
+    name: Active projects
+    filters:
+      and:
+        - 'status == "active"'
+    order:
+      - file.name
+      - status
+      - next_step
+      - last_touched
+    sort:
+      - property: last_touched
+        direction: DESC
+```
+
+## Recently
+
+```base
+filters:
+  and:
+    - 'type == "daily"'
+    - file.inFolder("Daily")
+properties:
+  file.name:
+    displayName: Day
+views:
+  - type: list
+    name: Recent days
+    limit: 14
+    order:
+      - file.name
+    sort:
+      - property: file.name
+        direction: DESC
+```
+
+## Reference
+
+- [[Context/about-[owner-slug]|About [Owner First Name]]]
+	- Who you are, how you work, what you are focused on. The AI reads this first.
+- [[Tasks/lessons|Lessons]]
+	- Things worth not learning twice.
+- [[Start-here|Start here]]
+	- What this vault is and how to use it. Read this one first if you are new.
+
+## People and teams
+
+[Org mode only. Omit this whole section, heading included, in personal mode.
+
+Link to REAL NOTES the owner will actually want, two or three of the people and areas the interview named, as `[[Team/Firstname-Lastname|Firstname]]` and `[[Departments/Name|Name]]`. If the interview named none, write the two lines below as plain text instead of links, because a folder has no note to point at.
+
+Never link a `CLAUDE.md` from this page. Those are routing files written for a session, and `Start-here.md` tells the owner they never need to read one. Sending them into a file called "routing index" from their own landing page makes both surfaces wrong at once.]
+
+- **`Team/`**: one note per person you work with closely.
+- **`Departments/`**: what each area owns and how it is doing.
+
+## Everything else
+
+Folders in the sidebar, not links. Open them there when you want them.
+
+- **`_inbox/`**: anything you could not file. Sorting it later is a real task.
+- **`Resources/`**: templates, attachments, reference material.
+- **`Intelligence/`**: transcripts, exports, research. Raw, not curated.
+
+---
+
+*Ask Claude "what am I forgetting?" when this page stops being useful.*
+
+<!--
+SCAFFOLDING NOTES: delete this comment block when filling the template in.
+
+The two `base` blocks require Obsidian 1.9 or later, which is when the Bases
+core feature shipped. On anything older they render as an unknown code block.
+If the owner is on an older Obsidian, replace each block with a plain wikilink
+list; everything else on this page works on any version.
+
+Two syntax traps, both verified against the shipped parser rather than the
+docs:
+
+  - Property keys under `properties:` MUST carry the `note.` prefix
+    (`note.status`, not `status`). A bare key is stored raw but looked up
+    normalized, so the displayName silently never applies. Obsidian's own
+    published example gets this wrong.
+
+  - `direction` is case-sensitive: `DESC` and `ASC`, uppercase. A lowercase
+    value is dropped SILENTLY rather than erroring, so the view renders
+    unsorted and looks merely wrong rather than broken.
+
+`sort` itself is undocumented in both the help pages and the TypeScript API.
+It is real and stable in the parser; do not "fix" it to something else.
+-->

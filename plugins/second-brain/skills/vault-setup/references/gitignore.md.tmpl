@@ -1,0 +1,46 @@
+# Python bytecode. The operator layer's test suite generates this the first
+# time it runs, and step 9 runs it INSIDE the new vault. Without this line the
+# vault's very first commit contains a machine-specific compiled artifact
+# pinned to whatever Python version happened to be installed.
+__pycache__/
+*.py[cod]
+
+# macOS and Windows directory metadata. Never wanted, always generated.
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Obsidian per-machine UI state: which panes are open, sidebar widths, the
+# active tab. Obsidian rewrites this every time it quits, so tracking it means
+# a diff on every session that touched the vault, and a merge conflict on every
+# machine that syncs it.
+#
+# The scaffold still WRITES this file to disk, so the owner's first launch
+# opens on Home rather than an empty pane. It is simply not tracked after
+# that. The tradeoff: cloning this vault to a second machine gives a default
+# layout instead of the seeded one, which is the right trade against a
+# permanently dirty working tree.
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Obsidian's own trash. Deleted notes land here when "Move to Obsidian trash"
+# is the configured delete behaviour. Recoverable in the app, not worth
+# versioning.
+.trash/
+
+# Secrets. Nothing in a scaffolded vault should need these, which is exactly
+# why the line belongs here before something does.
+.env
+.env.*
+!.env.example
+
+# Not ignored, deliberately:
+#   .backups/   snapshots of canonical files taken before in-place edits.
+#               These are the recovery path when git history is not enough,
+#               so they are tracked on purpose. Note that git cannot track an
+#               empty directory: the scaffold drops a .gitkeep in here (and in
+#               Resources/attachments/ and _inbox/_processed/) so the folder
+#               actually survives a clone. Without it, "tracked on purpose"
+#               above is a claim the repository does not honour.
+#   .obsidian/  everything else under it is real vault configuration and
+#               belongs in version control.

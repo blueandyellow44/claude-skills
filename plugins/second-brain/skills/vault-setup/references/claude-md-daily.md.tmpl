@@ -1,0 +1,40 @@
+# Daily: routing index
+
+Daily notes. One file per day, named `YYYY-MM-DD.md`.
+
+This is where meaningful work gets logged. If a session touched real work (decisions, drafts, planning), an entry lands here before the response ends. Casual chat does not get logged.
+
+## Frontmatter
+
+```yaml
+---
+type: daily
+date: YYYY-MM-DD
+status: active
+tags: [daily]
+---
+```
+
+## Entry format
+
+An append-only, chronological running log. After the frontmatter comes a `# YYYY-MM-DD` heading, then a single `## Log` section. Each session appends one entry:
+
+```markdown
+### <one-line title> (<surface>)
+
+Plain prose. What happened, the decisions and their rationale, files as
+`[[wikilinks]]`, and what is left open.
+```
+
+Never overwrite, never reorder; new entries append below the last.
+
+## Rules
+
+- **Never overwrite an existing `Daily/YYYY-MM-DD.md`.** If today's file exists, append.
+- **Wikilinks for everything.** Project names, people, decisions, lessons.
+- **No prose summaries unless asked for one.**
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Tasks/todo|todo.md]] (open loops surface here daily)

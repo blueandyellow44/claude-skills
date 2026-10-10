@@ -1,0 +1,9 @@
+{
+  "name": "second-brain",
+  "version": "1.6.1",
+  "author": {
+    "name": "Max Sheahan",
+    "url": "https://maxsheahan.com"
+  },
+  "description": "Session manager for a markdown vault: session wrap and daily logs, a per-session ledger, ruling capture, per-object decision records, agenda and weekly review, vault scaffolding, and vault health (audit, grooming, canon size budgets)."
+}

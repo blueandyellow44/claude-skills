@@ -1,0 +1,54 @@
+---
+title: "Going multi-user"
+type: reference
+status: not-started
+---
+
+# Going multi-user
+
+This vault is single-user by design. It is your own record of the organization, kept on your own machine.
+
+That is a deliberate starting point, not a limitation you are stuck with. If it earns its place in how you work, there is a real path to letting other people into it. This note is what you would need to settle before taking that path, written so you can hand it to whoever has to approve it.
+
+Do not start here. Start by using the vault alone for a few weeks. If it is not load-bearing for one person, it will not survive being shared.
+
+## What sharing an Obsidian vault actually means
+
+There are three genuinely different things people mean by "share the vault," and they have very different consequences.
+
+**A synced folder.** The vault lives in a shared Dropbox, Google Drive, or OneDrive folder. Everyone sees the same files. Cheap, immediate, and works today. The catch is that two people editing the same note at the same time produces conflicted copies, and there are no permissions inside the vault: anyone with the folder has all of it.
+
+**Real-time collaboration.** A plugin called Relay gives Obsidian live multi-user editing, closer to how Google Docs behaves, with folder-level access control. This is the option that genuinely scales past two or three people. It is a paid third-party service and it means your notes pass through their infrastructure.
+
+**A published subset.** Obsidian Publish turns selected notes into a website. One-way, read-only, no collaboration. Right answer if what you actually want is for people to *read* something rather than work in it.
+
+Most people asking for the second one actually want the third.
+
+## The questions to settle first
+
+These are not technical questions. They are the ones that will decide whether this is allowed, and they should be answered before anyone installs anything.
+
+**What is actually in here?** Go through the vault and write down the categories of information it holds. Notes about named staff. Records of government relationships. Anything about programme participants. Anything a funder gave you in confidence. The answer to every question below depends on this one, and it is worth doing honestly rather than optimistically.
+
+**Who is the data controller?** If the vault holds personal data about identifiable people, someone is legally responsible for it. Determine whether that is you personally or the organization, and get that in writing before it is shared.
+
+**Which jurisdictions are involved?** Where the vault owner sits, where the collaborators sit, and where the people described in the notes sit may be three different answers. Cross-border transfer of personal data is regulated, and the rules differ depending on those three answers.
+
+**Where would the data physically live?** Any real-time sync service stores your content on servers somewhere. Find out where, and whether that is compatible with the answer above and with any commitments already made to funders.
+
+**What does the organization already use?** If there is an approved system of record, a second one that is easier to use is a governance problem rather than a productivity win. The honest question is whether this replaces something or quietly duplicates it.
+
+**Who removes access when someone leaves?** A shared vault with no offboarding step is a slow leak. Name the person responsible before there is anything worth leaking.
+
+## A reasonable sequence
+
+1. Use it alone until you would be annoyed to lose it.
+2. Write down what is in it, using the first question above.
+3. Take that list to whoever owns data protection and ask what is permitted.
+4. Only then choose between a synced folder, Relay, and Publish, based on what you were actually told.
+5. Move anything that fails the review out of the vault before anyone else is added, not after.
+
+## Related
+
+- [[Start-here|Start here]]
+- [[CLAUDE|Vault root CLAUDE.md]]

@@ -1,0 +1,7 @@
+{
+  "name": "news-scoring",
+  "version": "0.1.0",
+  "description": "Score how a news article is written, not what it covers: a checklist scale from Informing to Manipulating, and an earlier tone scale from Practical to Hysterical.",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}

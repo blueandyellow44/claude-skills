@@ -1,0 +1,28 @@
+# Team: routing index
+
+One note per person the owner works with regularly. Direct reports, peers, key external contacts.
+
+This folder holds the owner's notes **about** those people. It is not the organization's shared record and nobody else reads it, so write what is actually useful to the owner rather than what would be appropriate in a personnel file.
+
+## What goes in a person note
+
+| Content type | Goes to |
+|---|---|
+| Who they are, role, reporting line, how you work together | `Team/<Name>.md` (the note itself) |
+| A one-on-one, a decision they own, a commitment they made | append to that person's note, dated |
+| A conversation that mostly concerns a project | the project's folder, with a `[[Name]]` wikilink |
+| Anything about the whole function rather than the person | `Departments/<Function>.md` |
+
+## Rules
+
+- **One note per person, named for them.** `Team/Firstname-Lastname.md`, Title-Case with hyphens. Use the person's real name; do not invent one to fill a note for someone the owner described but did not name.
+- **Frontmatter.** `type: person`, `status: active | former`, `role`, `last_touched: YYYY-MM-DD`.
+- **Link, do not copy.** When a person note and a project both need the same fact, the fact lives in one of them and the other links to it.
+- **Sensitivity.** Performance concerns, compensation, and anything a person would be hurt to read are the owner's judgment call to record here. Ask before writing that class of note; never infer it from a transcript.
+- **Dated appends.** Person notes accrete. New entries go at the bottom under a `### YYYY-MM-DD` heading, oldest first.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Departments/CLAUDE|Departments routing]]
+- [[Projects/CLAUDE|Projects routing]]

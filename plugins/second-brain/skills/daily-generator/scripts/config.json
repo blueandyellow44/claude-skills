@@ -1,0 +1,12 @@
+{
+  "repo_paths": [],
+  "skip_patterns": [
+    "node_modules",
+    ".git",
+    ".DS_Store",
+    "dist",
+    "build",
+    ".next",
+    ".cache"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "main": {
+    "id": "vs-main-split",
+    "type": "split",
+    "direction": "vertical",
+    "children": [
+      {
+        "id": "vs-main-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vs-home-leaf",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Home.md",
+                "mode": "preview",
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "left": {
+    "id": "vs-left-split",
+    "type": "split",
+    "direction": "horizontal",
+    "width": 280,
+    "children": [
+      {
+        "id": "vs-left-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vs-explorer-leaf",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "vs-search-leaf",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          }
+        ],
+        "currentTab": 0
+      }
+    ]
+  },
+  "right": {
+    "id": "vs-right-split",
+    "type": "split",
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true,
+    "children": [
+      {
+        "id": "vs-right-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vs-backlink-leaf",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "vs-outline-leaf",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {}
+            }
+          }
+        ],
+        "currentTab": 0
+      }
+    ]
+  },
+  "active": "vs-home-leaf",
+  "lastOpenFiles": [
+    "Home.md"
+  ]
+}

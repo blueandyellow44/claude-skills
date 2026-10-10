@@ -1,0 +1,23 @@
+# Skills: routing index
+
+User-editable reference material for individual skills. Each skill that needs vault context gets a subfolder. Skills read from here at runtime instead of embedding context.
+
+## Structure
+
+```
+Skills/{skill-slug}/
+  notes.md              # short guidance the skill should respect
+  references/
+    {topic}.md           # examples, templates, deeper context
+```
+
+## Rules
+
+- One folder per skill. Folder name matches the skill slug (kebab-case).
+- `notes.md` is for short, owner-voiced guidance.
+- `references/` is for examples and longer reference material loaded on demand.
+- Do not duplicate a skill's own `SKILL.md` content here. This folder is for the owner's customization of it.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]

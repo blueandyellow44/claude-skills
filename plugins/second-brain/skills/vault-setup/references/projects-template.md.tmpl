@@ -1,0 +1,67 @@
+---
+title: "<Project Name>"
+type: project
+# On copy, set this to one of: active | paused | dormant | archived.
+# It ships as `template` deliberately. This file carries `type: project` and
+# lives under Projects/, so with `status: active` it MATCHES Home.md's
+# "Active projects" Bases view and renders a row called `_template` with
+# `next_step: <one imperative sentence...>` on the owner's landing page, the
+# first thing they ever see. Fixed here rather than by excluding it in the
+# Bases filter, because `status == "active"` is verified syntax and a
+# name-exclusion filter would not be.
+status: template
+last_touched: YYYY-MM-DD
+next_step: <one imperative sentence describing the obvious next action>
+tags:
+  - project
+  - project/<slug>
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+
+# <Project Name>
+
+One-line description of what this project is.
+
+Part of [[Projects]].
+
+## Status
+
+- **Phase**: ideation / build / polish / shipping / maintenance
+- **Last touched**: YYYY-MM-DD
+
+## Goal
+
+What does "done" look like for this project? One sentence.
+
+## Scope
+
+- **In scope**: what this project includes
+- **Out of scope**: what this project deliberately does not include
+
+## Key files and locations
+
+- **Workspace**: path or URL
+- **Related vault files**: `[[wikilinks]]` to Context/, Intelligence/, Resources/
+
+## Current work
+
+- [ ] thing in progress
+- [ ] next thing
+
+## Known gotchas
+
+- things that broke before that must not break again. Cross-link to [[Tasks/lessons|lessons.md]].
+
+## Open questions
+
+- things unresolved that need a decision
+
+## Log
+
+- **YYYY-MM-DD**: what happened
+
+## Related
+
+- [[CLAUDE|Vault root]]
+- [[Projects/Projects|Projects status board]]

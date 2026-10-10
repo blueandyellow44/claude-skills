@@ -1,0 +1,30 @@
+Status board. One folder per project. Each folder contains a `<ProjectName>.md` hub with frontmatter (`status`, `last_touched`, `next_step`).
+
+This board is the authoritative project roster (root `CLAUDE.md`'s Active Projects section mirrors it). If they disagree, this board wins.
+
+---
+
+## Active
+
+[Project rows go here as they're created: `- **[[Name]]**: one-line description. *Next step: ...*`
+
+Link by BASENAME, not `[[Name/Name]]`. The partial-path form does not resolve reliably, and it contradicts rule 2 in this same vault's root `CLAUDE.md` ("Link by basename without extension"). Hub filenames match their folder names, so basenames are unique and a bare `[[Name]]` always resolves.]
+
+### Paused / dormant
+
+[Projects that are alive but not moving right now.]
+
+---
+
+## Conventions
+
+- **Frontmatter**: every `Projects/<Name>/<Name>.md` carries `status`, `last_touched: YYYY-MM-DD`, `next_step: <imperative sentence>`. Status changes update this file too.
+- **Folder naming**: Title-Case with hyphens.
+- **File-folder match**: filename inside the folder must match the folder name.
+- **New project**: copy `_template.md` to `Projects/<Name>/<Name>.md`, fill in frontmatter and body, add a row above.
+
+## Related
+
+- [[CLAUDE|Vault root]]
+- [[CLAUDE|Projects routing]]
+- [[Tasks/todo|todo.md]] (what is in flight across them)

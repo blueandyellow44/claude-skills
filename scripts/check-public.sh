@@ -11,6 +11,9 @@ hits=$(printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 grep -nIE "$pattern" 2>/
 # Obsidian wikilinks render literally on GitHub; only prose files can carry them.
 wl=$(printf '%s\n' "$files" | grep -E '\.md$' | tr '\n' '\0' | xargs -0 grep -nE '\[\[[A-Za-z][^]]*\]\]' 2>/dev/null)
 hits=$(printf '%s\n%s' "$hits" "$wl" | sed '/^$/d')
+# second-brain documents Tasks/lessons.md as part of the vault layout it expects;
+# there the path is the product, not a pointer to a private vault.
+hits=$(printf '%s\n' "$hits" | grep -vE '^(plugins/second-brain/|scripts/second-brain-public/)[^:]*:[0-9]+:.*Tasks/lessons' | sed '/^$/d')
 if [ -n "$hits" ]; then echo "PRIVATE REFERENCES:"; echo "$hits"; fail=1; fi
 junk=$(printf '%s\n' "$files" | grep -E '__pycache__|\.pyc$|\.DS_Store|change-tracker\.md|STATE\.md|/validation/|\.backups/')
 if [ -n "$junk" ]; then echo "FILES THAT SHOULD NOT SHIP:"; echo "$junk"; fail=1; fi

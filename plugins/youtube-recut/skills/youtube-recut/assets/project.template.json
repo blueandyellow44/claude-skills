@@ -1,0 +1,19 @@
+{
+ "project": "<name>",
+ "sources": {"v1": "~/path/to/raw-footage.mov"},
+ "brand": {"preset": "example"},
+ "audio": {"target_lufs": -14, "true_peak": -1.5, "limit_dbfs": -2, "denoise_atten_db": 12},
+ "tracks": {
+  "track1": {
+   "n": "1",
+   "title": "<card title>",
+   "target_min": [8, 12],
+   "words": {"v1": "v1-raw-words.json"},
+   "reference": {"src": "v1", "master": "~/path/to/reference-master.mp4", "vtt": "~/path/to/reference-transcript.vtt"},
+   "coming_up": null,
+   "promise": null,
+   "privacy": null,
+   "ocr_scan": true
+  }
+ }
+}

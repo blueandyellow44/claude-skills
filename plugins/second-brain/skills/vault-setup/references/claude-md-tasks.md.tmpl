@@ -1,0 +1,24 @@
+# Tasks: routing index
+
+Forward-looking task state and the historical lesson record.
+
+## Files
+
+- [[todo]]: forward-only. Active in-flight work, open loops, parked backlog. As tasks ship, the block moves to [[journal]] with the outcome.
+- [[lessons]]: historical record of every lesson learned. Flat chronological by `## YYYY-MM-DD` headers. Search by date or topic when you need the rationale behind a rule.
+- [[journal]]: completed Active blocks and session reviews. Historical record of what shipped.
+
+## Companion at vault root
+
+- [[Rules-of-Engagement]]: the active operational rules distilled from `lessons.md`. This is the session-start read. `lessons.md` is the full story; ROE is what to do.
+
+## Rules
+
+- **Lessons format**: `## YYYY-MM-DD` header, then `### Rule: <headline>` entries underneath. Add the active form to `Rules-of-Engagement.md` at the same time.
+- **todo.md is forward-only.** When a task ships, move the entire block to `journal.md` with the outcome. Do not let `todo.md` accumulate completed items.
+- **Open loops live here**, not in scattered project notes.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Daily/CLAUDE|Daily routing]]

@@ -42,6 +42,26 @@
       ]
     },
     {
+      "name": "voice-gate",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/blueandyellow44/voice-gate.git",
+        "path": "voice-gate"
+      },
+      "description": "Check whether a finished draft sounds like the person it is supposed to sound like: build a voice profile, score a draft against it, and get one verdict. The grader diagnoses and never edits.",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "writing",
+      "keywords": [
+        "voice",
+        "writing",
+        "review"
+      ]
+    },
+    {
       "name": "document-toolkit",
       "source": "./plugins/document-toolkit",
       "description": "Research a person into a sourced PDF brief, and lay out documents that look designed, not generated.",
@@ -179,9 +199,62 @@
         "cloudflare-pages",
         "illustration"
       ]
+    },
+    {
+      "name": "second-brain",
+      "source": "./plugins/second-brain",
+      "description": "Session manager for a markdown vault: session wrap and daily logs, a per-session ledger, ruling capture, per-object decision records, agenda and weekly review, vault scaffolding, and vault health (audit, grooming, canon size budgets).",
+      "version": "1.6.1",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "obsidian",
+        "vault",
+        "sessions",
+        "notes"
+      ]
+    },
+    {
+      "name": "youtube-recut",
+      "source": "./plugins/youtube-recut",
+      "description": "Gated recut pipeline for YouTube: rebuild a retention-first edit from raw footage, matching a reference edit's filler and pause cuts, with intro and outro cards, a music bed, burned karaoke captions, denoise, zooms, privacy masks, and preflight and QA gates so no render is handed over unchecked.",
+      "version": "0.1.5",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "video",
+      "keywords": [
+        "youtube",
+        "video",
+        "ffmpeg",
+        "captions"
+      ]
+    },
+    {
+      "name": "news-scoring",
+      "source": "./plugins/news-scoring",
+      "description": "Score how a news article is written, not what it covers: a checklist scale from Informing to Manipulating, and an earlier tone scale from Practical to Hysterical.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Max Sheahan",
+        "url": "https://maxsheahan.com"
+      },
+      "license": "MIT",
+      "category": "writing",
+      "keywords": [
+        "news",
+        "media",
+        "scoring"
+      ]
     }
   ],
   "metadata": {
-    "description": "Claude Code skills Max Sheahan built for his own work and cleaned up to share: writing and voice tools, designed documents, and a security suite for launching sites."
+    "description": "Claude Code skills Max Sheahan built for his own work and cleaned up to share: writing and voice tools, designed documents, a security suite for launching sites, a session manager for a markdown vault, a map workflow, a YouTube recut pipeline, and news scoring."
   }
 }

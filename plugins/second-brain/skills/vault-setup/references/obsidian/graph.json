@@ -1,0 +1,63 @@
+{
+  "collapse-filter": true,
+  "search": "-path:Intelligence",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:Projects/",
+      "color": { "a": 1, "rgb": 6000111 }
+    },
+    {
+      "query": "path:Context/",
+      "color": { "a": 1, "rgb": 6266478 }
+    },
+    {
+      "query": "path:Daily/",
+      "color": { "a": 1, "rgb": 14721338 }
+    },
+    {
+      "query": "path:Tasks/",
+      "color": { "a": 1, "rgb": 14702412 }
+    },
+    {
+      "query": "path:Resources/",
+      "color": { "a": 1, "rgb": 3843744 }
+    },
+    {
+      "query": "path:Intelligence/",
+      "color": { "a": 1, "rgb": 10133670 }
+    },
+    {
+      "query": "path:Skills/",
+      "color": { "a": 1, "rgb": 10514144 }
+    },
+    {
+      "query": "path:Team/",
+      "color": { "a": 1, "rgb": 9076594 }
+    },
+    {
+      "query": "path:Departments/",
+      "color": { "a": 1, "rgb": 7043727 }
+    },
+    {
+      "query": "path:_inbox/",
+      "color": { "a": 1, "rgb": 7829367 }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1.1,
+  "collapse-forces": true,
+  "centerStrength": 0.5187132489703125,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 0.5,
+  "close": true
+}

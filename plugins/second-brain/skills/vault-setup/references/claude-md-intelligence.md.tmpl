@@ -1,0 +1,25 @@
+# Intelligence: routing index
+
+Organizational knowledge: captured sources, meetings, market intel, competitive research, decisions, archive.
+
+## Routing
+
+| Category | Type | Goes to |
+|---|---|---|
+| Captured sources | Article, transcript, PDF | `Sources/YYYY-MM-DD title.md` |
+| Meetings | Any meeting or call | `meetings/{topic}/` |
+| Knowledge | Competitive insight | `competitors/{name}.md` |
+| Knowledge | Market insight | `market/{topic}.md` |
+| Knowledge | Decision with reasoning | `decisions/YYYY-MM-DD-{title}.md` |
+| Archive | Completed / sunset / superseded | `archive/{name}/` |
+
+## Rules
+
+- Move completed projects, sunset competitors, and superseded research to `archive/`.
+- Decisions specific to a single project go to `Projects/<Name>/decisions/`, not here. Cross-cutting decisions go here.
+- Wikilink every entity.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Projects/CLAUDE|Projects routing]]

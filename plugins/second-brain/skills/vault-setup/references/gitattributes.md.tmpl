@@ -1,0 +1,6 @@
+# Append-structured logs: auto-union concurrent appends instead of raising a merge
+# conflict. The built-in `union` driver keeps BOTH sides' lines: correct and
+# lossless for append-only files. Do NOT apply to hub files with frontmatter
+# fields (next_step, status): those need a real merge/choice.
+Daily/*.md merge=union
+Tasks/lessons.md merge=union

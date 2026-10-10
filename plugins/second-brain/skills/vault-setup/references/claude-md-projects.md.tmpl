@@ -1,0 +1,33 @@
+# Projects: routing index
+
+Active work lives here. One folder per project. Each folder contains a `<ProjectName>.md` hub file that matches the folder name.
+
+Read [[Projects]] for the status board and `next_step` for each project.
+
+## Project routing
+
+When new content arrives about a project, route it to the right place inside that project's folder:
+
+| Content type | Goes to |
+|---|---|
+| Status update, overview, deadline, next step | `<Project>/<Project>.md` (the hub) |
+| Research, competitor analysis, references | `<Project>/research/{topic}.md` |
+| Specs, requirements, briefs | `<Project>/specs/{name}.md` |
+| Drafts, scripts, written content | `<Project>/drafts/{name}.md` |
+| Ideas, brainstorms | `<Project>/ideas/{name}.md` |
+| Working notes, scratchpad | `<Project>/notes/{name}.md` |
+
+## Rules
+
+- **Subdirs on the fly.** Do not pre-create empty directories. When content arrives that needs a subdir, create it and write the file.
+- **Hub as index.** The `<Project>.md` hub is the entry point: status, next step, key files, log. Do not duplicate subdir content into the hub. Link to it.
+- **Lifecycle.** New project = `Projects/<Name>/<Name>.md` from `_template.md`, plus a row on `Projects/Projects.md`, plus a one-line mention in the root `CLAUDE.md` Active Projects section.
+- **Frontmatter.** Every project hub carries `status` (`active | paused | dormant | archived`), `last_touched: YYYY-MM-DD`, `next_step: <imperative sentence>`. Status changes update both the hub and [[Projects]].
+- **Naming.** Title-Case with hyphens. Filename inside the folder must match the folder name.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Projects]] (status board)
+- [[_template]] (copy this to start a new project)
+- [[Tasks/todo|todo.md]] (what is in flight across projects)

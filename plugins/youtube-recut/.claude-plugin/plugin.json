@@ -1,0 +1,7 @@
+{
+  "name": "youtube-recut",
+  "version": "0.1.5",
+  "description": "Gated recut pipeline for YouTube: rebuild a retention-first edit from raw footage, matching a reference edit's filler and pause cuts, with intro and outro cards, a music bed, burned karaoke captions, denoise, zooms, privacy masks, and preflight and QA gates so no render is handed over unchecked.",
+  "author": { "name": "Max Sheahan", "url": "https://maxsheahan.com" },
+  "license": "MIT"
+}

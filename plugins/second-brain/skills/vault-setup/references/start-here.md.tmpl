@@ -1,0 +1,83 @@
+---
+title: "Start here"
+type: guide
+cssclasses:
+  - home
+---
+
+# Start here
+
+A short guide to your own vault. Written for you, not for the AI.
+
+## What this actually is
+
+A folder of plain text files on your computer. That is the whole trick. There is no account, no server, and no company in the middle. You can open any file in any text editor, and if every piece of software involved disappeared tomorrow, your notes would still be sitting there and still be readable.
+
+Obsidian is just a nice window onto that folder. Claude is a reader and writer who can work in it with you.
+
+Two things follow from that, and they are the reason this setup is worth the trouble:
+
+1. Nothing you write here gets stranded in a tool you stop paying for.
+2. When you ask Claude something, it can read everything, so it answers from what you actually wrote rather than from what you remember to paste in.
+
+## The five things you do here
+
+**Write the day down.** `Daily/` holds one note per day. Press the daily note button and start typing. Meetings, decisions, things that annoyed you, things you promised someone. It does not need to be tidy.
+
+**Keep a page per project.** `Projects/` holds one folder per active piece of work, each with a hub note carrying its status and its next step. When you want to know where something stands, that page is the answer.
+
+[ORG MODE ONLY: delete both of the next two paragraphs in personal mode, and drop the Team and Departments rows from the table below. A guide to folders that do not exist is worse than no guide.]
+
+**Keep a page per person.** `Team/` holds one note per person you work with closely. What they own, what they committed to, what you talked about last.
+
+**Keep a page per function.** `Departments/` holds the org-shaped view: what each area is responsible for and what is currently true about it.
+
+**Park anything you cannot file.** `_inbox/` is the shrug folder. Drop it there and move on. Sorting it later is a real task, not a failure.
+
+## Where the rest of it goes
+
+| Folder | What lives there |
+|---|---|
+| `Context/` | Durable facts about you and your world. Slow-changing. |
+| `Daily/` | One note per day. Append as you go. |
+| `Tasks/` | What is open, and lessons worth not relearning. |
+| `Projects/` | Active work, one folder each. |
+| `Team/` | People. [org mode only] |
+| `Departments/` | Functions and regions. [org mode only] |
+| `Resources/` | Reference material, templates, attachments. |
+| `Intelligence/` | Raw captured material: transcripts, exports, research. |
+| `_inbox/` | Unsorted. |
+
+You will notice a `CLAUDE.md` file in most folders. Those are instructions for the AI about where things belong. You never need to read them. If you find yourself wanting to change how Claude files something, that is the file to point at.
+
+## How to ask Claude about your own vault
+
+Open a terminal in this folder and run `claude`, or point the Claude desktop app at it. Then ask in plain language. Things that work well:
+
+- "What did I say I would do this week and have not done?"
+- "Summarise everything in here about [a project or an area of your work] since June."
+- "I just got out of a call. Here is what happened, file it properly." Then paste or dictate the whole thing.
+- "What is the status of every active project, shortest version."
+- "What am I forgetting?"
+
+The last one is better than it sounds.
+
+## Three things not to worry about
+
+**You cannot break it by writing in the wrong place.** Everything is text and everything is searchable. Filing it wrong costs you nothing except a moment finding it later, and you can ask Claude to move it.
+
+**You do not have to learn the link syntax.** Typing `[[` brings up a picker. That is all there is to it. If you never use links at all, search still finds everything.
+
+**You do not have to use all of this.** A vault where you only ever write daily notes is a vault that is working. The folders are there when you want them, not obligations.
+
+## The one thing that is actually important
+
+This folder is not backed up anywhere yet. It exists on this laptop and nowhere else.
+
+Pick one of these before you put anything you would hate to lose in here:
+
+- Put the folder inside iCloud Drive, Dropbox, or OneDrive. Simplest option, works immediately.
+- Turn on Obsidian Sync, which is a paid service from the Obsidian team and also gives you the vault on your phone.
+- Push it to a private Git repository, which is what the `git` setup in this vault is already prepared for.
+
+Any of the three is fine. Doing none of them is the only real mistake available here.

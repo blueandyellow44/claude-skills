@@ -23,6 +23,10 @@ Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic
 | `secure-platform` | `cloudflare-pages-workers`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
 | `secure-gate` | `secure-gate` | Refusing a launch while any check is failing or unknown |
 | `city-walks-workflow` | 15 skills, from `landmark-piece` to `dual-site-deploy` | The working kit behind the illustrated Wally Walks map |
+| `voice-gate` | `voice-gate`, `voice-gate-reviser`, `voice-gate-builder`, `voice-gate-interview` | Checking a finished draft against a voice profile (lives in its own repo) |
+| `second-brain` | 15 skills, from `session-wrap` to `vault-doctor` | A session manager for a markdown vault |
+| `youtube-recut` | `youtube-recut` | Recutting raw footage into a tighter YouTube edit, with checks before any render is handed over |
+| `news-scoring` | `litmus-editorial-analyzer`, `ph-balance-scorer` | Scoring how a news article is written, not what it covers |
 
 ### writing-toolkit
 
@@ -63,6 +67,22 @@ Each plugin carries its own tests: `bash plugins/<plugin>/tests/run_tests.sh`. T
 The skills behind [wallywalks.app](https://wallywalks.app), an illustrated walking-tour map. They cover drawing a landmark piece from its survey, reviewing each piece against evidence before it lands, drawing a real person as a sprite, walk cycles and walker motion, repairing and preflighting the map, a preview deploy, deploying two sites from their own branches, a Google sign-in checklist for Pages, keeping one shared Chrome, and setting up a new city. Two hooks act as tripwires on map pieces and on deploys.
 
 They are written for that app's layout, so most of them are a pattern to adapt rather than a drop-in. Point them at your repo with `CITY_WALKS_REPO`; with it unset, the hooks stay silent.
+
+### voice-gate
+
+Installs from [its own repo](https://github.com/blueandyellow44/voice-gate) through this marketplace. It scores a finished nonfiction draft against a supplied voice profile and gives one verdict. It diagnoses and never edits; a separate reviser applies approved findings, and two builder skills make the profile from a corpus or by interview.
+
+### second-brain
+
+A session manager for a markdown vault that opens in Obsidian. It keeps what a Claude Code session did, decided, and left open in files you own: a daily log, a todo list, one hub note per project, a lessons file, and a short rules file. Set `SECOND_BRAIN_VAULT` to your vault, or run `vault-setup` to scaffold one. The skills expect the layout in the plugin README and do not adapt to a different one. The hooks the private version runs with are not included; the README lists what that costs.
+
+### youtube-recut
+
+Rebuilds a retention-first edit from raw screen-and-webcam footage, matching a reference edit's filler and pause cuts, then adds captions, cards, zooms, and privacy masks, with preflight and QA gates before a render is handed over. It needs `ffmpeg` and a local speech model; bring your own music and theme. Known limit, stated in its README: the text gate has passed a render with one spoken word removed.
+
+### news-scoring
+
+Two scales for how a news article is written. `litmus-editorial-analyzer` scores from Informing to Manipulating on a checklist; `ph-balance-scorer` is the earlier Practical-to-Hysterical tone scale. The scoring has improved and is imperfect. Every example headline is invented.
 
 ## Notes
 

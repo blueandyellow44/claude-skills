@@ -1,0 +1,84 @@
+---
+owner: [Owner Name]
+vault-version: 1
+created: [YYYY-MM-DD]
+updated: [YYYY-MM-DD]
+tags: [vault-root]
+---
+
+# [Vault Name]
+
+> **Startup.** Read in this order at the start of any substantive session (skip for trivial or purely conversational turns):
+>
+> 1. **This file (`CLAUDE.md`).** Routing.
+> 2. **`Daily/<today>.md`.** If today's file is absent, read the most recently modified file in `Daily/` instead.
+> 3. **`Tasks/todo.md`.** What is open right now.
+> 4. **`Tasks/lessons.md`.** Rules earned the hard way. Scan for anything relevant to the current ask rather than reading the whole file once it grows.
+> 5. **`Rules-of-Engagement.md`.** Active operational rules, led by the non-negotiables.
+>
+> Ground the clock (`date`) before the first response of a session if timing matters to the task.
+
+This is [Owner Name]'s primary context vault: an Obsidian knowledge base and the operating memory for every AI session touching this work. Durable state lives here as markdown so it survives across sessions.
+
+Two of the files here are for the owner rather than for you. `Start-here.md` explains the vault in plain language, and `Home.md` is the landing page Obsidian opens on. Keep both readable by a person: no routing tables, no rule numbering, no vault jargon. If a change would make either one read like this file, put it in this file instead.
+
+Three rules override everything else:
+
+1. **Discoverability over cleverness.** Every folder has a `CLAUDE.md` routing index that tells the next session what lives there and where new information should land. The discovery chain from this file to any leaf note is at most three reads.
+2. **No orphans among curated notes.** Every authored note links to at least one other note, and every folder is reachable from this file. This does NOT apply to dated capture leaves (`Daily/`, `_inbox/`) or to skill machinery.
+3. **One home per fact.** If a piece of information has two plausible homes, pick one and link from the other. Never duplicate authoritative content.
+
+## Knowledge routing
+
+| Type of info | Goes to |
+|---|---|
+| The owner's own orientation, in plain language | `Start-here.md` (vault root) |
+| Landing page and dashboard views | `Home.md` (vault root) |
+| Identity, working style, current focus | `Context/about-[owner-slug].md` |
+| Project work (active, paused, dormant) | `Projects/{Name}/` (see `Projects/CLAUDE.md`) |
+| Open task list, in-flight work, open loops | `Tasks/todo.md` |
+| Lessons learned, rules earned the hard way | `Tasks/lessons.md` |
+| Completed work, shipped items | `Tasks/journal.md` |
+| Active operational rules (session-start read) | `Rules-of-Engagement.md` (vault root) |
+| Daily journal and session logs | `Daily/YYYY-MM-DD.md` |
+| Unprocessed capture (inbox, ages out into a real home) | `_inbox/` |
+| Reusable prompts, frameworks, templates, swipe files | `Resources/` (see `Resources/CLAUDE.md`) |
+| Skill-specific reference material | `Skills/{slug}/` (see `Skills/CLAUDE.md`) |
+| Meetings, sources, decisions, research | `Intelligence/` (see `Intelligence/CLAUDE.md`) |
+| People the owner works with [org mode only] | `Team/{Name}.md` (see `Team/CLAUDE.md`) |
+| Functions, teams, regions [org mode only] | `Departments/{Name}.md` (see `Departments/CLAUDE.md`) |
+
+For finer-grained routing, read the target folder's `CLAUDE.md`.
+
+## Active Projects
+
+**The authoritative roster is the board, `Projects/Projects.md`.** One wikilinked row per project with its status. Each hub, `Projects/<Name>/<Name>.md`, carries that project's own rules, `next_step`, and log.
+
+[List active projects here as `- **[[Name]]**: one-line description. *Next step: ...*`, link by basename, per rule 2 below, never `[[Name/Name]]`. Leave this section with just the heading and no bullets until a project exists.]
+
+This list is a convenience mirror, not a second source of truth. Where it and the board disagree, the board wins, and the fix is to correct this list rather than to argue. Once the vault carries enough projects that keeping both in step is real work, delete the bullets and keep only the pointer above: board-only is a valid and preferred layout, and the acceptance gate stops checking this list the moment the bullets are gone.
+
+Full project routing rules in `Projects/CLAUDE.md`.
+
+## Rules
+
+1. **Always log meaningful work** to `Daily/YYYY-MM-DD.md` before the response ends; append, never overwrite. When a session advances a project, update the project hub in the same wrap. Casual chat is not logged.
+2. **Use `[[wikilinks]]` for every entity**, woven into sentences. Link by basename without extension; use a vault-relative path on collision; never `../`-prefixed. Internal vault links are wikilinks, never `[markdown](links)`.
+3. **Standalone notes.** Each note makes sense on its own.
+4. **Sentence case** in titles, headings, and link text. Never Title Case, never ALL CAPS.
+5. **Frontmatter on every new note**: `type`, `date`, `status` (required), `tags`.
+6. **Never create files or folders in vault root.** The sanctioned root files are this one, `Rules-of-Engagement.md`, `Home.md`, and `Start-here.md`. If a new top-level folder is genuinely needed, ask first.
+7. **Never duplicate authoritative content.** `Context/` files are canonical; reference with wikilinks.
+8. **New project**: copy `Projects/_template.md` into `Projects/<Name>/<Name>.md`, fill it in, add a row to `Projects/Projects.md`, and add a one-line mention here under Active Projects.
+9. **Corrections become rules.** When a correction lands, add the active form to `Rules-of-Engagement.md` and the full story to `Tasks/lessons.md`.
+
+## Anti-patterns
+
+Do not:
+
+- Put a `# Title` heading that duplicates the filename.
+- Create orphan curated notes (an authored note with no inbound link from anywhere). Dated leaves and skill machinery are exempt.
+- Cram every fact about a project into its hub file. Route to `research/`, `specs/`, `drafts/`, `notes/` subfolders as content warrants.
+- Write project names or people as plain text. Always `[[wikilinks]]`.
+- Use `[markdown](links)` for internal vault notes. Wikilinks only.
+- Reformat without being asked.

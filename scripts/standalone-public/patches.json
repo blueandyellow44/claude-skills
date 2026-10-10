@@ -1,0 +1,2222 @@
+{
+ "version": 2,
+ "source_hashes": {
+  "news-scoring/skills/litmus-editorial-analyzer/SKILL.md": "d4de13c206e90437",
+  "news-scoring/skills/ph-balance-scorer/SKILL.md": "34266db1d99a4ee3",
+  "skill-toolkit/skills/skill-builder/SKILL.md": "666e08f9a8dac510",
+  "skill-toolkit/skills/skill-builder/examples/README.md": "0af2b47dcfe2f2e5",
+  "youtube-recut/.claude-plugin/plugin.json": "85c81a53ba939b82",
+  "youtube-recut/skills/youtube-recut/SKILL.md": "d8526e2082a9ea48",
+  "youtube-recut/skills/youtube-recut/assets/cards/record-anim.html": "684865aa28245f5d",
+  "youtube-recut/skills/youtube-recut/assets/fonts/Manrope-Bold.ttf": "6d96a49f270feece",
+  "youtube-recut/skills/youtube-recut/assets/project.template.json": "9da121f4fb5e396e",
+  "youtube-recut/skills/youtube-recut/references/failure-catalog.md": "e459c8708893aa3c",
+  "youtube-recut/skills/youtube-recut/references/project-json.md": "4054bb32faccc8e9",
+  "youtube-recut/skills/youtube-recut/scripts/align_reference.py": "73be3b428dff7290",
+  "youtube-recut/skills/youtube-recut/scripts/caption_qa.py": "241d52e4de7dff69",
+  "youtube-recut/skills/youtube-recut/scripts/edge_qa.py": "680b01dc3226dbd2",
+  "youtube-recut/skills/youtube-recut/scripts/make_captions.py": "688272bccdcdac02",
+  "youtube-recut/skills/youtube-recut/scripts/map_beats.py": "c6e4af858051ab6c",
+  "youtube-recut/skills/youtube-recut/scripts/ocr_emails.swift": "ee89e7479b3037d5",
+  "youtube-recut/skills/youtube-recut/scripts/preflight.py": "97d8a1fda6bfdc41",
+  "youtube-recut/skills/youtube-recut/scripts/qa_track.py": "80f32ac203cb8e43",
+  "youtube-recut/skills/youtube-recut/scripts/render_card.py": "c225fe8ef907c0a3",
+  "youtube-recut/skills/youtube-recut/scripts/render_track.py": "2c7286013ee659b2",
+  "youtube-recut/skills/youtube-recut/scripts/setup_env.sh": "7b33962ac8ad40c8",
+  "youtube-recut/skills/youtube-recut/scripts/text_diff_qa.py": "d1a2c91a91007b8b",
+  "youtube-recut/skills/youtube-recut/scripts/transcribe.py": "746090a337ecb393",
+  "youtube-recut/skills/youtube-recut/scripts/yr.py": "7d2f612caeafc29d",
+  "youtube-recut/skills/youtube-recut/scripts/zoom_plan.py": "4f77ae07d4bc856c"
+ },
+ "deleted": [],
+ "added": {
+  "news-scoring/.claude-plugin/plugin.json": "{\n  \"name\": \"news-scoring\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Score how a news article is written, not what it covers: a checklist scale from Informing to Manipulating, and an earlier tone scale from Practical to Hysterical.\",\n  \"author\": { \"name\": \"Max Sheahan\", \"url\": \"https://maxsheahan.com\" },\n  \"license\": \"MIT\"\n}\n",
+  "news-scoring/README.md": "# news-scoring\n\nTwo skills that score how a news article is written, not what it covers. Both come from LITMUS, a news-scoring app. Each is a prompt: Claude reads the article text and returns a structured score.\n\n| Skill | Scale | Method |\n|---|---|---|\n| litmus-editorial-analyzer | 1 to 5, Informing to Manipulating | A checklist. Five sections (source attribution, perspective balance, language intensity, framing devices, tribal signals) are scored 0 to 5 each and the total is converted to the scale. |\n| ph-balance-scorer | 1 to 5, Practical to Hysterical | The earlier scale. Five weighted dimensions rated as a whole, with a penalty for each logical fallacy. |\n\nThe checklist replaced the tone scale because holistic rating compressed scores into a narrow band and leaned on source reputation. The tone scale stays here for quick reads and for comparison.\n\nThe scoring has improved and is imperfect. A score describes technique on the page. It is not a fact-check, and it is not a rating of an outlet.\n\n## What it needs\n\nNothing to install. There are no scripts. Give the skill the article text; a headline alone gets a lower-confidence score.\n\n## What was removed from the private version\n\n- Example headlines attributed to real news outlets, and two examples that read like real published headlines about a sitting president. Every example headline is now invented, and outlets are described by type (a wire service, a business daily).\n- Real people's names inside example headlines.\n- Sentences that named real outlets as typical high or low scorers.\n- An internal product name in the tone scale's opening line.\n- The analyzer's description of itself as the final authority on the method. It defines the scale; it makes no claim about how right a given score is.\n\n## Known limits\n\n- In the analyzer, the band table and the formula disagree at the band edges. The formula `1 + (raw / 25) * 4` puts a raw total of 8 at 2.3, while the table and the output example put a raw total of 8 in the Mixed band (2.5 to 3.4). Decide which one your pipeline follows.\n- Scores vary between runs and between models. The batch checks (spread, lean independence, topic independence) are instructions to the model, not code.\n- The scales were written for English-language political news in the United States.\n",
+  "skill-toolkit/.claude-plugin/plugin.json": "{\n  \"name\": \"skill-toolkit\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Build Claude skills that trigger reliably, read their references, and improve every time they run.\",\n  \"author\": { \"name\": \"Max Sheahan\", \"url\": \"https://maxsheahan.com\" },\n  \"license\": \"MIT\"\n}\n",
+  "skill-toolkit/README.md": "# skill-toolkit\n\nOne skill, `skill-builder`, that coaches you through building a Claude skill: it interviews you, drafts the description line in several variations, checks that every reference file the skill names exists, refuses to ship a skill with a vague description and no output example, and stages the result until you have run it on a real task.\n\n## What it needs\n\n- Claude Code or another Claude surface with the `AskUserQuestion` tool. Every interview question goes through it.\n- Write access to a skills folder: `~/.claude/skills/` or a project's `.claude/skills/`.\n\nNothing to install. There are no scripts.\n\n## Where it writes\n\n- `<skills folder>/<slug>-staged/` while a skill is staged, renamed to `<skills folder>/<slug>/` on promotion.\n- `<skills folder>/.skill-builder/` for build state, pre-build notes, drafts and the lessons file.\n\n## What was removed from the private version\n\n- Every path into a personal notes folder. The private skill read seven files there on trigger and wrote its state into a project folder beside them; this one reads the skills folder's own conventions file, its lessons file and its examples.\n- A personal voice profile. The private skill wrote in its owner's voice rules; this one writes plainly and follows your style guide if you name one.\n- The dependency on a separate interview skill. The four interview phases are written out in Step 4.\n- The staging convention. The private version staged skills in a subfolder; Claude Code only loads skills that sit directly in the skills folder, so this one uses a `-staged` suffix.\n\nA few rules the private skill kept in a separate lessons file are folded into the steps: the walk-through for the pre-build questions, the placeholder marking for a skipped interview, and the \"all of the above\" clarification.\n\n## Where the method comes from\n\nThe wording is the author's. The method is not all original: the pre-build questions, the structural pieces of a SKILL.md, the variations rule and the save-approved-examples loop follow a skill-building framework taught in a third-party course, and the four-phase interview follows the shape of an openly licensed interview skill.\n\n## Known limits\n\n- The generalized paths and the `-staged` convention were written for this export and have not yet been through a full build. The private version has.\n- The self-update rules assume the skill can write to its own folder. Installed from a plugin it cannot, so it writes to the work folder instead.\n- The collision check reads descriptions in one skills folder. It does not see skills that come from installed plugins.\n",
+  "youtube-recut/README.md": "# youtube-recut\n\nOne skill and a gated pipeline for recutting a long recorded talk (screen plus webcam) into a tighter YouTube edit, working from the raw footage. It matches the filler and pause cuts of a reference edit, adds intro and outro cards, a music bed, burned karaoke captions, denoise, punch-in zooms and privacy masks, and refuses to hand over a render until its checks pass.\n\nEvery stage writes a file into your project folder and every gate is a script. `skills/youtube-recut/SKILL.md` has the stage table; `references/failure-catalog.md` lists each defect the pipeline has shipped or nearly shipped and the detector that now catches it.\n\n## What it needs\n\n- macOS for the whole pipeline. The privacy gate reads frames with Apple Vision through `swift`; everything else is ffmpeg and Python.\n- `ffmpeg` and `ffprobe` on PATH, and `uv`.\n- `scripts/setup_env.sh` builds one Python 3.11 environment in `~/.cache/youtube-recut/venv` (override with `YR_ENV`): numpy, scipy, torch, torchaudio, DeepFilterNet, faster-whisper, soundfile, OpenCV 4, Playwright, imageio-ffmpeg. It is a large install. The first transcription also downloads the `small.en` speech model.\n- Google Chrome, for the cards. The card page loads its typeface from Google Fonts, so card rendering needs a network connection.\n- Your own music: a theme file and an outro file. None ships here.\n- In practice, a reference edit of the same recording (an edited master and its transcript as a `.vtt`). See the limits below.\n\n## Setup\n\n1. Run `scripts/setup_env.sh` and wait for `ENV READY`.\n2. Copy `assets/presets/example.json` to a preset of your own and fill in the card text, the two music paths and the timings.\n3. Make a project folder, copy `assets/project.template.json` into it as `project.json`, and follow the stages in the skill.\n\n## What was removed from the private version\n\n- The channel's brand preset: series name, card text, web addresses, and the paths to its music package. `example.json` replaces it with placeholders.\n- A hardcoded speech-recognition prompt of that channel's product names. It is now the optional `asr_prompt` setting.\n- Names, dates and quoted lines from the recordings the pipeline was built on, in comments and in the failure catalog. The mechanics and the numbers are unchanged.\n\nThe caption typeface in `assets/fonts/` is Manrope Bold, renamed \"Manrope Cap\" so the caption renderer cannot pick a lighter weight. It is under the SIL Open Font License; the license is beside it in `OFL.txt`.\n\n## Known limits\n\n- Built on a handful of recuts for one channel. The card design, the caption style and the default timings are that channel's and are yours to change.\n- Output is fixed at 3840x2160. Narrower sources are pillarboxed; other shapes are not handled.\n- English only (`small.en`).\n- The renderer reads cut pieces from the alignment against a reference edit. A track with no reference edit can be transcribed, planned and mapped, but the later stages expect those pieces.\n- The music bed is not optional: the renderer always opens the theme file.\n- Caption and text checks compare speech recognition against a transcript. They report flags a person has to read; `QA PASS` alone is not a handover.\n- The text gate can pass a dropped word. It re-listens to a missing word with the expected words as a prompt, and the transcriber can then report a word that is not in the audio. In the check below, a render with one word removed passed the text gate while the caption check listed the mismatch. Read the caption flags as part of the gate.\n- Nothing here uploads anything. Packaging and the YouTube Studio draft are done by you or by other tools.\n\n## What was checked for this export\n\nOne run, on a 14-second synthetic clip: speech from the macOS `say` voice over a test pattern, with a reference edit made by cutting one pause and one filler word out of it. From this folder: `setup_env.sh` built a fresh environment; transcribe, map, align, zoom plan and preflight ran clean; the aligner found the reference cut within 0.01 s; a full render with both cards finished; and the QA gate passed it. On files made bad on purpose, the sync gate and the email gate failed as they should, preflight failed on a missing music file, the mapper flagged an anchor that matched nothing, and the text gate did not fail (see the limits above). Real footage, zooms that actually trigger, privacy boxes, the \"coming up\" line and long renders were not exercised here.\n",
+  "youtube-recut/skills/youtube-recut/assets/fonts/OFL.txt": "Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttps://openfontlicense.org\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE.\n",
+  "youtube-recut/skills/youtube-recut/assets/presets/example.json": "{\n  \"name\": \"example\",\n  \"about\": \"Starter preset. Copy it, rename it, and replace every value below with your own channel's. The card text, the music files and the timings are yours to supply; nothing here ships with music.\",\n  \"series\": \"Your Series\",\n  \"track_word\": \"Track\",\n  \"card_brand\": \"yourname.example\",\n  \"card_name\": \"Your Name\",\n  \"outro_eyebrow\": \"Your tagline\",\n  \"outro_headline\": \"Thanks for watching.\",\n  \"outro_urls\": [\"yourname.example\"],\n  \"theme_wav\": \"~/path/to/your-theme.wav\",\n  \"outro_wav\": \"~/path/to/your-outro.wav\",\n  \"cards\": {\"intro_frames\": 144, \"outro_frames\": 339, \"fps\": 30, \"intro_fade_s\": 0.45},\n  \"music\": {\"duck_start\": 4.5, \"duck_end\": 5.3, \"duck_db\": -20, \"fade_start\": 22.8, \"fade_end\": 24.8},\n  \"caption\": {\"font\": \"Manrope Cap\", \"size\": 204, \"margin_v\": 56, \"text\": \"&H00E3EDF0&\", \"active\": \"&H004BA6C8&\"}\n}\n"
+ },
+ "banned": [
+  [
+   4,
+   "e11ac386b455f589"
+  ],
+  [
+   5,
+   "b6fafd918a6e18a5"
+  ],
+  [
+   6,
+   "4748d4c802a775e8"
+  ],
+  [
+   6,
+   "9d98fe37aaa5e121"
+  ],
+  [
+   7,
+   "c591504c1917514c"
+  ],
+  [
+   8,
+   "2a3df5b21191bf87"
+  ],
+  [
+   9,
+   "5b7179a89aa6a683"
+  ],
+  [
+   10,
+   "22f05c347ee20feb"
+  ],
+  [
+   10,
+   "9d8f599586cb5650"
+  ],
+  [
+   11,
+   "14cc007539a06bca"
+  ],
+  [
+   12,
+   "043528a4f159663f"
+  ],
+  [
+   12,
+   "318a3e1d61301c25"
+  ],
+  [
+   13,
+   "dff8a90d6c8c0a1e"
+  ],
+  [
+   13,
+   "e030613af5c40f1b"
+  ],
+  [
+   13,
+   "e93cfb46f5f9651f"
+  ],
+  [
+   15,
+   "09a40c4e26b0b3f9"
+  ],
+  [
+   17,
+   "9b46b228d956fe8b"
+  ],
+  [
+   17,
+   "b862747435391ba5"
+  ],
+  [
+   19,
+   "56c86706668a8db7"
+  ],
+  [
+   21,
+   "4339fef6cc93f765"
+  ]
+ ],
+ "files": {
+  "news-scoring/skills/litmus-editorial-analyzer/SKILL.md": [
+   {
+    "key": [
+     "1be7b57f0f64008c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: \"Score news articles on the Litmus Informing-to-Manipulating scale (1–5). Use this skill whenever scoring an article, batch-scoring a set of articles, checking the spread of the scoring engine, or diagnosing why a score seems wrong. Also trigger when building or debugging an AI scoring pipeline, writing prompts for a scoring API, or testing whether the scale produces sufficient variance across sources and political leanings. This skill defines the scale and the method: if there is a question about how a Litmus score is computed, this file is the reference.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "270eedbf007a7eb6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "This skill scores news articles on a 1–5 scale from **Informing** to **Manipulating**. It comes from Litmus, a news-scoring app, and is designed to be used as an AI prompt (fed to Claude or another LLM) that analyzes article text and returns a structured score.\n"
+    ]
+   },
+   {
+    "key": [
+     "335ba32df60af0e5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The scoring has improved and is imperfect. A score is a structured reading of how a piece is written. It is not a verdict on whether the piece is true, and two runs on the same article can differ.\n",
+     "\n",
+     "The previous scoring system (P/H Balance, the `ph-balance-scorer` skill beside this one) failed because it asked the AI to \"rate\" articles. That caused score compression (everything clustered at 1.0–1.8), source reputation bias (right-wing sources got flattened scores), and topic confusion (war coverage scored as \"hysterical\" regardless of writing quality). This skill was built to address those failures with a **checklist-based detection method**: the AI scans for specific manipulation signals, counts them, and computes a score from the findings. No vibes. No gestalt ratings. Count the signals, compute the score.\n"
+    ]
+   },
+   {
+    "key": [
+     "0d4a90dd200e0bf6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 1.5–2.4 | Mostly Informing | Facts are central but the writer makes editorial choices: selective emphasis, a pointed headline, one perspective gets more space. Still primarily informational. |\n"
+    ]
+   },
+   {
+    "key": [
+     "2cfbdf92642601c1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 3.5–4.4 | Mostly Manipulating | Facts are present but secondary to emotional framing. The article uses tribal signals (us-vs-them language, emotional manipulation, conformity pressure) to shape the reader's reaction before they encounter the evidence. |\n"
+    ]
+   },
+   {
+    "key": [
+     "33d7ca9d40b66895"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| The article actively demonizes people who hold the opposing view: they are stupid, evil, or dangerous | 5 |\n"
+    ]
+   },
+   {
+    "key": [
+     "c47bebea7b99c466"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Check for structural manipulation: how the article is organized to lead the reader to a predetermined conclusion.\n"
+    ]
+   },
+   {
+    "key": [
+     "c7772c945dd30f27"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| The article uses selective ordering: favorable evidence first, unfavorable evidence buried or absent | 2 |\n"
+    ]
+   },
+   {
+    "key": [
+     "e607c7984f7c1bfd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- **Enemy construction**: Does the article construct a villain, meaning not a person with a different view but an enemy to be opposed?\n"
+    ]
+   },
+   {
+    "key": [
+     "e1e03b33596738e4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| The article is pure tribal content. Every element (headline, structure, language, sourcing) serves the tribe. Dissent is not just absent but implicitly punished. | 5 |\n"
+    ]
+   },
+   {
+    "key": [
+     "3ef7dcbbcfb93f34"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Do not let your knowledge of the source influence the score. A wire service can publish a manipulative analysis piece. A partisan outlet can publish a straight wire report or a well-sourced investigation. Score what is on the page, not what you expect from the masthead. If you catch yourself thinking \"this is that outlet, so it's probably a 3+,\" stop and re-read the actual text.\n"
+    ]
+   },
+   {
+    "key": [
+     "3ce66cd34965bfef"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A factual report about war, terrorism, mass shootings, or pandemics is NOT manipulative because the subject is disturbing. \"6 killed in airstrike, officials say\" is a 1.0 article. \"Catastrophic airstrike DECIMATES community as politicians do NOTHING\" is a 4.0+ article. Same event, completely different writing. The checklist forces you to score language, not subject matter. Follow it.\n"
+    ]
+   },
+   {
+    "key": [
+     "3d8cf73b4eae757a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The previous system scored 90% of articles between 1.0 and 1.8. That's useless. The checklist is designed to spread scores. Use the full range. If you score 10 articles from different sources and they all land between 1.0 and 2.5, something is wrong: re-read with fresh eyes and look harder for the signals in Sections C, D, and E. Conversely, if everything scores above 3.5, you're being too aggressive.\n"
+    ]
+   },
+   {
+    "key": [
+     "5f2ddcd38629cefe"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A clearly labeled opinion piece or editorial that argues a position with evidence, acknowledges counterarguments, and uses the author's name and credentials is NOT inherently manipulative, even if you disagree with the conclusion. Manipulation is about technique (tribal signals, emotional language, missing context, false framing), not about having a point of view. A well-argued opinion piece might score 2.0–2.5. A poorly argued one that uses tribal tactics scores 4.0+.\n"
+    ]
+   },
+   {
+    "key": [
+     "195d85171064cee1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- If your scores consistently correlate with political lean (all right-wing sources score high, all left-wing sources score low, or vice versa), your scoring is biased\n"
+    ]
+   },
+   {
+    "key": [
+     "91528155471ec6e7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "## Reference Headlines\n"
+    ]
+   },
+   {
+    "key": [
+     "eb078f19c43273f2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Use these to check that the scoring engine spreads scores the way the scale intends. Every headline and outlet type below is invented for illustration: five ways of covering the same imaginary court ruling. If your scores do not approximate these ranges, the prompt or the pipeline needs adjustment.\n"
+    ]
+   },
+   {
+    "key": [
+     "06a2dea9c75bfa6a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**A wire service**: \"High Court Rules 5-4 to Limit Agency Authority Over Carbon Emissions\"\n"
+    ]
+   },
+   {
+    "key": [
+     "1e4192550d28c88a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**A business daily's news section**: \"Court Reins In Regulator, Bolstering Business Certainty\"\n"
+    ]
+   },
+   {
+    "key": [
+     "b20c4c35ae11a868"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**A national daily's news analysis**: \"Top Court Strips Regulator of Key Climate Powers in Blow to White House Agenda\"\n"
+    ]
+   },
+   {
+    "key": [
+     "8be7c27782d584a8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Language: \"Strips,\" \"blow\" are moderately loaded words\n"
+    ]
+   },
+   {
+    "key": [
+     "c1208ee3cc57a057"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Tribal: Mild. Implies the ruling is a loss for \"the good side\"\n"
+    ]
+   },
+   {
+    "key": [
+     "897155e17a11f33a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**An opinion piece presented as analysis**: \"Major Victory for Energy Independence as Court Smashes Regulatory Overreach\"\n"
+    ]
+   },
+   {
+    "key": [
+     "8d4eb6bb97bdf67c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Language: \"Victory,\" \"smashes,\" \"overreach\" are heavily loaded\n"
+    ]
+   },
+   {
+    "key": [
+     "f847deec2aca7ec2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Tribal: Strong. \"We won,\" and the opposition is overreaching government\n"
+    ]
+   },
+   {
+    "key": [
+     "a1829c56880c5331"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**A partisan advocacy blog**: \"Corrupt Court Sells Out Our Children's Future to Billionaire Donors' Demolition Scheme\"\n"
+    ]
+   },
+   {
+    "key": [
+     "3f084fe34e079708",
+     "1c194d7e9273ce6c"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- Balance: None. The opposing view is presented as corruption\n",
+     "- Language: \"Corrupt,\" \"sells out,\" \"demolition scheme\" are pure inflammatory\n"
+    ]
+   },
+   {
+    "key": [
+     "423f5102324be3b4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Tribal: Maximum. Readers who disagree are complicit in corruption\n"
+    ]
+   },
+   {
+    "key": [
+     "e18892444c2325d0",
+     "3396de21cb5d223b"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "  \"source\": \"Example Daily\",\n",
+     "  \"headline\": \"Top Court Strips Regulator of Key Climate Powers in Blow to White House Agenda\"\n"
+    ]
+   },
+   {
+    "key": [
+     "a8fb639cb320f1a8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Spread check**: After scoring all articles, verify the scores span at least 2.5 points across the batch. If they don't, re-score the highest and lowest: you're probably compressing.\n"
+    ]
+   }
+  ],
+  "news-scoring/skills/ph-balance-scorer/SKILL.md": [
+   {
+    "key": [
+     "60a04aafed9c9ce3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  article objectivity, or checking the spread of P/H Balance scores. Also trigger when P/H\n"
+    ]
+   },
+   {
+    "key": [
+     "350bd3fb5ce5917a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "You are a news tone analyst for a news-scoring app. Your job is to score each article on the **P/H Balance**, a 1-to-5 scale measuring how *practically* or *hysterically* a story is told. This is NOT about political bias (left vs. right). It's about **how** the story is framed.\n",
+     "\n",
+     "This is the earlier of two scales. The Informing-to-Manipulating checklist in `litmus-editorial-analyzer` replaced it, because holistic rating compressed scores and leaned on source reputation. The scoring has improved and is imperfect. Use this scale when you want a quick tone read or a comparison against the checklist.\n"
+    ]
+   },
+   {
+    "key": [
+     "81c8ae40935bca4d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The words a journalist chooses, especially verbs and adjectives, reveal whether they're informing or persuading.\n"
+    ]
+   },
+   {
+    "key": [
+     "e5bc08ce3530be62"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "## Scoring Guardrails\n"
+    ]
+   },
+   {
+    "key": [
+     "da54217db2e5c74b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Wire services are not always 1.0.** Wire copy usually scores 1.0–1.5, but it can score higher on opinion-adjacent pieces or when using loaded language. Don't auto-assign low scores based on source reputation.\n"
+    ]
+   },
+   {
+    "key": [
+     "060571552572be9c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "2. **Center sources can run hot.** Public broadcasters and business news desks have editorial voices. An analysis piece with emotional framing scores 2.5+, not 1.5 just because of the masthead.\n"
+    ]
+   },
+   {
+    "key": [
+     "123adf152d649ec4"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "3. **Headline alone can push past 3.0.** If the headline contains loaded verbs, catastrophizing, or victory/defeat framing, even if the body is measured, the score reflects that the headline is what most people actually read.\n"
+    ]
+   },
+   {
+    "key": [
+     "239644efc85a0a4c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "5. **Don't confuse serious topics with hysterical coverage.** A war story can be scored 1.2 if reported factually. A school board story can score 4.5 if reported with outrage. The topic doesn't determine the score. The writing does.\n"
+    ]
+   },
+   {
+    "key": [
+     "765da6ad67a7ca4e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "7. **Cumulative fallacy penalty.** One logical fallacy in an otherwise grounded piece might push from 2.0 to 2.3. Three fallacies in the same article suggests a pattern: push harder, to 3.0+.\n"
+    ]
+   },
+   {
+    "key": [
+     "c555d2a9c5f98632",
+     "6b486b4511ab4ba0",
+     "3817d564bcb932c5",
+     "04de2e50f6cee83b",
+     "86240d9ab25da096"
+    ],
+    "ctx": 0,
+    "old": 5,
+    "new": [
+     "  Headline Framing:      X.X: [one-line justification]\n",
+     "  Language Intensity:     X.X: [one-line justification]\n",
+     "  Source Balance:         X.X: [one-line justification]\n",
+     "  Logical Fallacies:     X.X: [fallacies found, or \"none detected\"]\n",
+     "  Structural Manipulation: X.X: [one-line justification]\n"
+    ]
+   },
+   {
+    "key": [
+     "f92372faf79f4043"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "NOTE: [any caveats, e.g. \"only headline available, body not analyzed\"]\n"
+    ]
+   },
+   {
+    "key": [
+     "fb6e167306765a2a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "All four headlines are invented for illustration.\n",
+     "\n",
+     "**Example 1. Score: 1.2 (Practical)**\n"
+    ]
+   },
+   {
+    "key": [
+     "81bc9bd658515da9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Why: States what happened. Number included. Neutral verb. Body follows inverted pyramid, quotes both sponsors and opponents, cites budget office data.\n"
+    ]
+   },
+   {
+    "key": [
+     "3b2565570e878389",
+     "3266350e23735f61"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "**Example 2. Score: 2.8 (Mixed Signals)**\n",
+     "Headline: \"For the Governor, a Promised Jobs Boom Collides With the Cost of the Bridge\"\n"
+    ]
+   },
+   {
+    "key": [
+     "ca6ecd00b6abca0c",
+     "d5d325252d37abdc",
+     "ba2a2e36a27fe075"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "**Example 3. Score: 3.5 (Running Hot)**\n",
+     "Headline: \"'Crisis Mayor' Fusses Over Ribbon Cuttings as Flood Damage Mounts\"\n",
+     "Why: Scare quotes on \"Crisis Mayor\" = editorial mockery. \"Fusses over ribbon cuttings\" is an opinion stated as fact. \"Damage mounts\" is emotional intensifier. Multiple fallacies: ad hominem (fusses), appeal to emotion (mounting damage), false framing (implying the ribbon cuttings caused the damage).\n"
+    ]
+   },
+   {
+    "key": [
+     "dd5d5bdd744c1d45"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "**Example 4. Score: 4.6 (Hysterical)**\n"
+    ]
+   }
+  ],
+  "skill-toolkit/skills/skill-builder/SKILL.md": [
+   {
+    "key": [
+     "9f0ff16d45b7d1f0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: Build Claude skills that trigger reliably, read their references, and improve every time they run. Use when the user wants to turn a process into a reusable skill, save a finished workflow as a skill, or customize an existing one. Refuses to ship skills that have a vague description or no output example.\n"
+    ]
+   },
+   {
+    "key": [
+     "d9399bc8d92a6085"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "You are the user's coach and teacher for building Claude skills. Write plainly at all times: plain words, short sentences, no em dashes, no announcer lines. If the user has a style guide or voice file, read it before emitting any prose and follow it. Every interview question to the user goes through the `AskUserQuestion` tool. Never type interview questions in plain chat.\n"
+    ]
+   },
+   {
+    "key": [
+     "262bec8e4f1f247f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The single outcome of this skill is a working Claude skill in the user's skills folder that the user actually reaches for again.\n",
+     "\n",
+     "## Where things live\n",
+     "\n",
+     "Three locations, settled once per build and written to the build-state file:\n",
+     "\n",
+     "- **Skills folder.** Where finished skills live. Default `~/.claude/skills/` (personal, every project) or `.claude/skills/` in the current project. If both are plausible, ask through `AskUserQuestion`. A user who keeps skills somewhere else names the folder.\n",
+     "- **Staging folder.** `<skills folder>/<slug>-staged/`, with `name: <slug>-staged` in its frontmatter. A staged skill sits in the skills folder so Claude can trigger it and the user can run it, and its name says it is not yet promoted.\n",
+     "- **Work folder.** `<skills folder>/.skill-builder/`. Build state, pre-build notes, drafts, and the lessons file live here, outside any skill, so an abandoned build leaves no half skill behind.\n"
+    ]
+   },
+   {
+    "key": [
+     "d433dd061bdd5b15"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Read these before asking the first question:\n"
+    ]
+   },
+   {
+    "key": [
+     "72879162f846b716",
+     "7895cadf8e866eec",
+     "b2e0cdad53d07bfd",
+     "e472dd528185997c",
+     "0a73192b26a51df3",
+     "0a7bcfcf3a98dcf2",
+     "db5feae7eba7f76d"
+    ],
+    "ctx": 0,
+    "old": 7,
+    "new": [
+     "1. The conventions file of the skills folder, if one exists (a `CLAUDE.md` or `README.md` at its top level).\n",
+     "2. `<work folder>/lessons.md`, if it exists. These are rules earned on earlier builds.\n",
+     "3. Every file in this skill's `examples/` folder. They show what an approved build looks like.\n",
+     "4. The user's style guide or voice file, if they have named one in this session or in the conventions file.\n"
+    ]
+   },
+   {
+    "key": [
+     "99f01d1dd27b6544"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "A missing optional file is not an error. If a file the user named is missing, surface the gap and ask before continuing.\n"
+    ]
+   },
+   {
+    "key": [
+     "0ee675b059a6ec3a",
+     "24f6bb218847d322",
+     "7e2ed8f7ef468ec5"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "- Path A. Fuzzy idea or trigger phrase. The user has a workflow they want productized.\n",
+     "- Path B. Save this conversation as a skill. The user just finished doing the task manually and wants the steps captured.\n",
+     "- Path C. Customize an existing skill. The user has a third-party skill or one of their own that they want to fork or extend.\n"
+    ]
+   },
+   {
+    "key": [
+     "063e445c090c9fdd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Save the mode to a build-state file at `<work folder>/<slug>-build-state.md` so the skill can resume if the user abandons the build midway. The build-state path uses the slug from Step 2, so the build-state file lands once Step 2 is complete.\n"
+    ]
+   },
+   {
+    "key": [
+     "cfa0868ae8284fad",
+     "cc7dc094e3fcae1e"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. **One-phrase pitch.** What is the skill in one phrase? Recommend something concrete based on what the user has said so far. If mode is Path B (save this conversation), derive the pitch from the prior conversation. If Path C (customize existing skill), derive from the source skill's description.\n",
+     "2. **Working slug.** Kebab-case, lowercase, no spaces. Recommend a short noun-phrase slug derived from the pitch. Examples: `polished-pdf`, `email-triage`, `linkedin-repurpose`. Run a quick collision check on `<skills folder>/<slug>/` and `<skills folder>/<slug>-staged/`. If either exists, surface and ask for a different slug.\n"
+    ]
+   },
+   {
+    "key": [
+     "4e1dec360efc293c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Write the pitch and slug to the build-state file at `<work folder>/<slug>-build-state.md`. From here on, every reference to `<slug>` in subsequent steps uses this value.\n"
+    ]
+   },
+   {
+    "key": [
+     "6052f89d2cc0d91b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "If the user is in Path C (customize existing skill), the slug can default to `<existing-slug>-custom` or `<existing-slug>-v2` so the new skill does not collide with the source. When the source is someone else's skill, check its license before copying any of its text, and keep its attribution.\n"
+    ]
+   },
+   {
+    "key": [
+     "340adee7f9edc86d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Four things must be answered before building. Check first whether the user already wrote them down.\n"
+    ]
+   },
+   {
+    "key": [
+     "11f9cc3eed3b5edd"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Look for `<work folder>/<slug>-prebuild.md`. If it exists, read it, summarize the four answers back to the user, and ask whether anything has changed.\n"
+    ]
+   },
+   {
+    "key": [
+     "857803683d2d40c2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Save the answers into the pre-build file as you go, so the build can resume.\n"
+    ]
+   },
+   {
+    "key": [
+     "c9131816a16886b2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Some users need a walk-through before they can answer, most often on question 4. When the answer is \"walk me through this\" or similar, explain the question with one concrete example, then ask it again.\n",
+     "\n",
+     "If the user cannot answer question 4, see the refusal threshold in the rules section.\n"
+    ]
+   },
+   {
+    "key": [
+     "d089b65e2d716d85",
+     "01ba4719c80b6fe9",
+     "4f35420af59256b3"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "Run a four phase interview:\n"
+    ]
+   },
+   {
+    "key": [
+     "ca374b98940159b9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "4. **Confirmation.** Summarize back in the GOAL, TRIGGER, INPUT, PROCESS, OUTPUT, EDGE CASES shape. Ask the user where the gaps are.\n"
+    ]
+   },
+   {
+    "key": [
+     "5e1edd8ea801ca8f"
+    ],
+    "ctx": 0,
+    "old": 0,
+    "new": [
+     "When the user picks \"all of the above\" on a choice question, ask once whether they mean a branch at run time or one blended output, then accept the clarified answer.\n",
+     "\n",
+     "The user may skip the interview and go straight to a draft. If they do, mark every gap the interview would have closed as `[PLACEHOLDER: ...]` in the drafted SKILL.md and list them in a \"Known gaps\" section, so a skipped-interview draft is never mistaken for a finished one.\n",
+     "\n"
+    ]
+   },
+   {
+    "key": [
+     "14b918aa62a4c145"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Once the interview is confirmed, draft the SKILL.md. Six structural pieces.\n"
+    ]
+   },
+   {
+    "key": [
+     "2196c4648a91192d",
+     "c27e3abbef164a42"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. **Name and trigger description.** Draft five variations of the description line. Range them across length, specificity, and framing (broad vs trigger phrase rich vs problem framed vs minimal). Present them through `AskUserQuestion` (the tool caps at four options, so use four sharply differentiated variations and accept a fifth if the user writes one in). Recommend the problem framed variation by default. Spend disproportionate care here. The description line is the entire trigger surface.\n",
+     "2. **Goal.** One short paragraph from the big picture answers.\n"
+    ]
+   },
+   {
+    "key": [
+     "c01c0bf9b9676cdf"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "5. **Rules section.** Encode the predictions of what could go wrong, the edge case decisions from the interview, and the lessons relevant to this skill from `<work folder>/lessons.md`. Two rules are mandatory in every built skill:\n"
+    ]
+   },
+   {
+    "key": [
+     "d9b2b44fd950457a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Save the draft to `<work folder>/<slug>-draft-v0.1.md` and present it to the user as one diff for editing. Apply edits in place.\n"
+    ]
+   },
+   {
+    "key": [
+     "dfc21aea20d4afdd",
+     "4ad1e379a99de684"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- Scan the skills folder, and any folder of shared reference material the user has named, for an existing match. If found, point the skill at it.\n",
+     "- If not found, ask the user through `AskUserQuestion` with three options: build it now via a sub-interview, point to a file at a different path, or skip and flag the dependency as unmet.\n"
+    ]
+   },
+   {
+    "key": [
+     "d686c2fbbd6e53b8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "If the user chooses to build, run a focused planning-mode interview (problem, audience, content shape, length) and write the reference file to `<staging folder>/references/<name>.md`. If it is plausibly reusable by other skills and the user keeps a shared reference folder, offer that instead. Confirm placement before writing.\n"
+    ]
+   },
+   {
+    "key": [
+     "1d86d8b516ef1c21"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Never silently proceed with a missing reference. A skipped reference is the second biggest failure mode after a vague description.\n"
+    ]
+   },
+   {
+    "key": [
+     "bd3a62e8b7f7c878"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Run the collision check first. Read every `description` line in `<skills folder>/*/SKILL.md`. Compare to the locked description. If keyword or semantic overlap is high, surface the existing skill and ask the user via `AskUserQuestion`: extend the existing one, fork it as a variant, or proceed because the use cases really are distinct. Refuse to silently create a near duplicate.\n"
+    ]
+   },
+   {
+    "key": [
+     "f99cfa10bb7ca4ce"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Apply the refusal threshold. If the description fails the read aloud test (no plausible trigger phrase matches, or any unrelated phrase could match) and the user cannot describe or provide a single good output example, refuse to ship. Explain which gate failed. Save the partial work to the build state file and exit clean.\n"
+    ]
+   },
+   {
+    "key": [
+     "84bb029122d54f65",
+     "1c578c8283db8821"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "<skills folder>/<slug>-staged/\n",
+     "├── SKILL.md         (name: <slug>-staged)\n"
+    ]
+   },
+   {
+    "key": [
+     "3cc3b547a7390d72"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The `-staged` suffix keeps the skill visible to Claude so it triggers and the user can run it, but flagged as not yet promoted.\n"
+    ]
+   },
+   {
+    "key": [
+     "75431b4da7e00546"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Tell the user the staged skill is ready. Ask them to trigger it on a real task. Once they have run it and approved the output, ask through `AskUserQuestion` whether to promote.\n"
+    ]
+   },
+   {
+    "key": [
+     "250c4bbd59bc49e5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "On promote: rename the folder from `<skills folder>/<slug>-staged/` to `<skills folder>/<slug>/` and change the frontmatter name to `<slug>`. Append a row to the skill's `change-tracker.md` recording the promote with the verified column set to \"ran end to end on <task>, output approved.\"\n"
+    ]
+   },
+   {
+    "key": [
+     "c71d7c2ac273cd42"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Every built skill includes two instructions in its own rules section:\n"
+    ]
+   },
+   {
+    "key": [
+     "c3bc10407db8423d",
+     "1d3b608c29e16bef"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "1. When the user defines a clear thing the skill should not do, the skill updates its own rules section automatically.\n",
+     "2. At the end of every run, the skill asks the user through `AskUserQuestion`: save this output as a good example? Three options. Yes. Yes with notes. No.\n"
+    ]
+   },
+   {
+    "key": [
+     "ea28029e1880ee40"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "If yes, write input plus output plus timestamp plus optional notes to `<skills folder>/<slug>/examples/YYYY-MM-DD-HHMM.md`. Future runs read the `examples/` folder as a required reference so the skill builds a corpus of what good looks like.\n"
+    ]
+   },
+   {
+    "key": [
+     "24a2afe409586056"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Skill-builder itself includes both of these rules in its own SKILL.md. The self learning loop applies to skill-builder too. When this skill is installed from a plugin its own folder is read-only: write its approved examples and rule changes to `<work folder>/skill-builder/` instead, and read that folder alongside `examples/` on trigger.\n"
+    ]
+   },
+   {
+    "key": [
+     "67bb2a010e3322c3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "These are the rules skill-builder enforces on itself. Predictions of failure modes. This section updates over time as the user corrects the skill.\n"
+    ]
+   },
+   {
+    "key": [
+     "e8362b54d84c75af"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Plain voice for everything emitted.** Plain words. No em dashes. No announcer lines. This applies to skill-builder's questions, summaries, drafts, and built-skill SKILL.md content. When the user has a style guide, reading it is obligatory before emitting prose, and it wins over these defaults.\n"
+    ]
+   },
+   {
+    "key": [
+     "a22f6eec8b84eeff",
+     "d0c0f52e32b5cdaf"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "7. **Refuse fatally vague skills.** If the description fails the read aloud test and there is no output example, refuse to ship. Save the partial work. Tell the user which gate failed.\n",
+     "8. **Stage, then promote.** Every new skill ships to `<skills folder>/<slug>-staged/` first. Promote only after the user has run the staged skill on a real task and approved the output.\n"
+    ]
+   },
+   {
+    "key": [
+     "615137cf46d6231b",
+     "bec2d619bd57df8b"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "10. **Corrections become lessons.** Every correction from the user during a build is appended to `<work folder>/lessons.md` with date, category, and the rule in imperative form.\n",
+     "11. **Self update.** When the user defines a thing skill-builder should not do, record it as a rule (in this section when the skill folder is writable, in `<work folder>/skill-builder/rules.md` when it is not). When the user approves an output, ask whether to save it as an example.\n",
+     "12. **Do it, do not delegate it.** Never ask the user to perform a write, copy, or command the available tools can perform. Retry a failed tool before falling back to asking.\n"
+    ]
+   },
+   {
+    "key": [
+     "e463ae3a233e3fdd",
+     "9ee02ed9b0bcc5b4"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "- Build a generic process planner. Skill-builder is for skills only.\n",
+     "- Skip the interview phase to save time without marking the gaps. The interview is where the quality comes from.\n"
+    ]
+   },
+   {
+    "key": [
+     "c0dc52de224636d9",
+     "05ddff8f4dbe1f65",
+     "c4c6dbeb9debbdcb"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "- Promote a staged skill before the user has run it on a real task.\n",
+     "- Use em dashes in emitted prose.\n"
+    ]
+   },
+   {
+    "key": [
+     "01ba4719c80b6fe9",
+     "8da1a5f430d8d85b",
+     "01ba4719c80b6fe9",
+     "86f54400bb6048e5",
+     "e985826657970936",
+     "83563260d15f116f",
+     "85a805656af11fd4",
+     "538f1675c6af5187",
+     "d1436d829c7e03a7",
+     "b5686fddeccad4ab",
+     "3d2e4752a225154d",
+     "99cc128b3f4fe2d3"
+    ],
+    "ctx": 0,
+    "old": 12,
+    "new": []
+   },
+   {
+    "key": [
+     "4b4b268eec552161",
+     "01ba4719c80b6fe9",
+     "6220fcf6409e4a23",
+     "e427758f92b8db98"
+    ],
+    "ctx": 0,
+    "old": 4,
+    "new": [
+     "- `examples/README.md`: what an approved example holds and how it is named.\n"
+    ]
+   }
+  ],
+  "skill-toolkit/skills/skill-builder/examples/README.md": [
+   {
+    "key": [
+     "64b0e33e9ed39de0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "This folder holds successful runs of skill-builder. On each run, the skill asks the user at the end whether to save the output as a good example. If yes, a new file lands here (or in the work folder's `skill-builder/` folder when this skill is installed read-only from a plugin).\n"
+    ]
+   },
+   {
+    "key": [
+     "fd8f998823ecaab5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- The input the user provided (mode, fuzzy idea, prebuild notes, etc.)\n"
+    ]
+   },
+   {
+    "key": [
+     "45ea75c7cb3b2f19"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Optional notes from the user about what made this run good\n"
+    ]
+   },
+   {
+    "key": [
+     "2d2c9af9571b5759"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Skill-builder reads this folder on every run as a required reference, so it learns what a good output looks like over time. Approved outcomes become the corpus of what good looks like.\n"
+    ]
+   },
+   {
+    "key": [
+     "c788a4beeff4d66d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "No example ships with the skill. The first one is yours.\n"
+    ]
+   }
+  ],
+  "youtube-recut/.claude-plugin/plugin.json": [
+   {
+    "key": [
+     "f52e955320027ac0",
+     "19c4036a7b10344b",
+     "4d5cd2fb4f3df884",
+     "3e71e81117798d0e",
+     "d10b36aa74a59bcf"
+    ],
+    "ctx": 0,
+    "old": 5,
+    "new": [
+     "  \"description\": \"Gated recut pipeline for YouTube: rebuild a retention-first edit from raw footage, matching a reference edit's filler and pause cuts, with intro and outro cards, a music bed, burned karaoke captions, denoise, zooms, privacy masks, and preflight and QA gates so no render is handed over unchecked.\",\n",
+     "  \"author\": { \"name\": \"Max Sheahan\", \"url\": \"https://maxsheahan.com\" },\n",
+     "  \"license\": \"MIT\"\n",
+     "}\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/SKILL.md": [
+   {
+    "key": [
+     "ec25868ee6c3c62b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "description: Recut long recorded videos (screen + webcam talks) into tighter, retention-first YouTube edits from the RAW footage, matching a reference edit's filler/pause cuts (e.g. Descript), with branded intro/outro cards, music bed, burned karaoke captions, denoise, punch-in zooms, privacy masks, and a hard QA gate before anything reaches the user. Use when the user asks to recut, re-edit, repurpose, shorten, or re-brand an existing video for YouTube, or says \"run the recut workflow\" / \"next video\". Not for Shorts, thumbnails, or titles.\n"
+    ]
+   },
+   {
+    "key": [
+     "9f1a3037a5b24a95"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "## House rules (each one cost real time before it was a rule)\n"
+    ]
+   },
+   {
+    "key": [
+     "4769ae49dcf34f78"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "1. **Reply to every message the user sends, immediately**, even mid-job. Long jobs ALWAYS run in the background.\n"
+    ]
+   },
+   {
+    "key": [
+     "07a99bdee25569ea"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "3. **The user's tips are instructions.** When they name a source, a file, or a prior fix, switch to it now.\n"
+    ]
+   },
+   {
+    "key": [
+     "6ea162dc3a21894d",
+     "985afb7a151907ef",
+     "a515fd9942124d90",
+     "ab2871ac53bd0b1d",
+     "d9cbc9cead34d61c",
+     "f536e8d76df3ad29"
+    ],
+    "ctx": 0,
+    "old": 6,
+    "new": [
+     "5. **Measure before diagnosing.** A listening model's report is a lead, never a fact: one produced\n",
+     "   8 of 8 false \"clipped word\" flags on a real render. Check the waveform or a re-transcription first.\n",
+     "6. **Hand over only after the QA gate passes, as the ONLY open video.** Close every stale player window first\n",
+     "   (on macOS: `osascript -e 'tell application \"QuickTime Player\" to close every document saving no'`), then open\n",
+     "   the one file, and name it and its length in the message. A stale test window left open once got a test cut\n",
+     "   approved instead of the full render: a wasted render and upload.\n"
+    ]
+   },
+   {
+    "key": [
+     "4258b75f7486af4c",
+     "b3e4709f51000f4f"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "   The length target is a guide: an over-edited, shorter piece is worse than a better-revised, longer video.\n",
+     "9. Log each correction in `review/revisions-log.md` (note, measured cause, fix, status).\n"
+    ]
+   },
+   {
+    "key": [
+     "779748775d208019"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 1 | Intake | write `project.json` from `assets/project.template.json` | the user answered the intake questions (below) |\n"
+    ]
+   },
+   {
+    "key": [
+     "f08edcb61427dafb"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 3 | Plan | draft `plan/edit-plan.md` + `plan/beats.json` | **the user approves the plan** |\n"
+    ]
+   },
+   {
+    "key": [
+     "b1f7ed2ecad20c59"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 10 | User review | open the render; log the notes | the user's OK |\n"
+    ]
+   },
+   {
+    "key": [
+     "cebc6c37eb049aa8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| 13 | Package + upload | chapters from `renders/<final>.beats.json` (or a `--captions-only` run on the final, which reproduces its timeline); titles/description checked claim-by-claim against the transcript; Studio private draft | the user publishes |\n"
+    ]
+   },
+   {
+    "key": [
+     "03cedfabd513b9b9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Run stages 2, 5, 6 and 8+ in the background and keep answering the user. A stage that fails twice does not get a\n"
+    ]
+   },
+   {
+    "key": [
+     "efed748cf8a0bae9"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  no clear win, ask the user which moment leads. Trim only real dead air (\"an over-trimmed video is more noticeable than an\n"
+    ]
+   },
+   {
+    "key": [
+     "46ecad0e01c1bf4e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "- Brand preset (`assets/presets/`; start from `example.json`), series label, track number and title for the card,\n",
+     "  \"coming up\" line (which tracks). The intro theme and outro music are the user's own files: ask for their paths.\n",
+     "  Names and jargon the videos use go in `asr_prompt` (see `references/project-json.md`).\n"
+    ]
+   },
+   {
+    "key": [
+     "d9ff90b8d2cbd7c5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Write anchors as the speaker SAYS them; the matcher normalizes gonna/going to and numbers.\n"
+    ]
+   },
+   {
+    "key": [
+     "c74086ea3b98c9a3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Every defect this pipeline has shipped or nearly shipped, with its detector. When the user reports a problem, find its\n"
+    ]
+   },
+   {
+    "key": [
+     "a848403e1f67c5e9",
+     "01ba4719c80b6fe9",
+     "6966a78bdcdf6f69",
+     "5b5bcc6609c2b20b",
+     "01ba4719c80b6fe9",
+     "a7eda5bfabd6aafc",
+     "01ba4719c80b6fe9",
+     "e764c116bc175f6f",
+     "09fc080155ddd320",
+     "01ba4719c80b6fe9",
+     "aaa3253d9879bca0"
+    ],
+    "ctx": 0,
+    "old": 11,
+    "new": [
+     "- `assets/cards/record-anim.html`, `assets/fonts/`: card template and caption font (SIL Open Font License, `OFL.txt`).\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/assets/project.template.json": [
+   {
+    "key": [
+     "ef16c397850181e0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     " \"brand\": {\"preset\": \"example\"},\n"
+    ]
+   },
+   {
+    "key": [
+     "38d8ef4b06819344"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "   \"reference\": {\"src\": \"v1\", \"master\": \"~/path/to/reference-master.mp4\", \"vtt\": \"~/path/to/reference-transcript.vtt\"},\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/references/failure-catalog.md": [
+   {
+    "key": [
+     "7d521aaeccff3de9",
+     "248c6e6bc995ee1e"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "Every defect the pipeline shipped or nearly shipped on the recuts it was built on. Each row names the\n",
+     "detector that now catches it. When the user reports something, match it here before investigating from scratch.\n"
+    ]
+   },
+   {
+    "key": [
+     "48b6acd6102c0943"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| Symptom (as heard) | Measured cause | Fix in code | Detector |\n"
+    ]
+   },
+   {
+    "key": [
+     "198b9eefd57a5fd0",
+     "a944fd4800ce508f",
+     "c7f5e5e6f9be59e4",
+     "5e3d7a70d47e1bfb",
+     "f851b2909e47152c"
+    ],
+    "ctx": 0,
+    "old": 5,
+    "new": [
+     "| Word clipped at a cut (\"to, put\" sounded like \"t-\") | The cut landed 0.09 s before the reference's | `refine_cut` to ~10 ms against the reference master | text_diff_qa, caption_qa |\n",
+     "| Tail of the previous sentence audible after the card | Beat anchor started two words early | Anchors snap to the exact first/last planned word | preflight word check |\n",
+     "| Cold open starts mid-word / ends with a flash of the next word | Fixed-length pads (+0.12 s / +0.18 s) and handles ran into neighboring words | `safe_extend`: extend only through a real gap, stop at the next onset; never extend where the reference cut mid-sound; pad+handle as ONE extension | `edge_qa.py` (16 of 186 edges leaked before, 0 after) |\n",
+     "| Sentence ends one word early | Anchor end-snap searched backward only; the fuzzy match landed one word short | Snap searches both directions | preflight: first/last heard word must equal the plan's |\n",
+     "| \"Clipped trailing s\" (reported by a listening model) | NOT a defect: silence both sides of every flagged cut; sibilant energy matched raw | none | Never act on a listening-model claim without the waveform |\n"
+    ]
+   },
+   {
+    "key": [
+     "e498762e0ea8af40"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| A product name misspelled as a sound-alike word (22x) | Respelling pass grouped words while master time moved `< 3 s`; a BACKWARDS jump (reordered beats) is negative and passed, so whole runs got an empty reference window. Unequal-length blocks (\"read-only\" vs \"Read only\") were skipped | `0 <= gap < 3`; unequal blocks pair by similarity; spoken contractions merge | caption_qa \"same-length respellings\" |\n"
+    ]
+   },
+   {
+    "key": [
+     "6685323d71bfff7a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| Captions too low | Position guessed | Style from the measured box of a reference frame (size 204, margin 56 at 4K) | Frame grab vs reference |\n"
+    ]
+   },
+   {
+    "key": [
+     "01ba4719c80b6fe9",
+     "3aeecfdb61bc0495"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "| The reference transcript's own typos on screen | Captions take the reference transcript's spelling, typos included | `plan/caption-fixes.json` whole-word fixes | caption_qa respellings list (read it every render) |\n"
+    ]
+   },
+   {
+    "key": [
+     "01ba4719c80b6fe9",
+     "35e550c3afe999af",
+     "c1267b2efb96bbfb",
+     "cf803ef3eaab9e01",
+     "9865f13cea7abe2e"
+    ],
+    "ctx": 0,
+    "old": 5,
+    "new": [
+     "| A short sentence captioned as an ASR garble | ASR garble with no word-level pairs; every respelling rule skipped it | Small local mismatch (<= 6 words): the hand-corrected reference replaces the ASR words over the same span | caption_qa |\n",
+     "| A sentence said three times in a row looked uncaptioned | caption_qa merged identical consecutive lines | Lines split on the karaoke reset (highlight on first word) | caption_qa self-check |\n",
+     "| Text gate demanded words that were cut on purpose | Expected text ignored approved skips | Skips are removed from the expected text | text_diff_qa |\n",
+     "| Beat lost its last word | Aligner saw a \"cut\" whose resync landed past the beat end (only the trailing pause was shortened) | Extend the last piece through the planned last word | preflight word-coverage check |\n"
+    ]
+   },
+   {
+    "key": [
+     "86dc69292e22dfa8"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| Name redacted that should not be | Copied another video's decision | Re-derive privacy per video with the user | intake question |\n"
+    ]
+   },
+   {
+    "key": [
+     "87a227089fb1a699"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| QA said PASS on a render with 3 clipped words | Text flags were report-only, buried in ~35 spelling-noise flags; one beat silently unchecked | Canonical normalization (numbers, times, contractions, compounds, fillers), 3-pass re-listen of each missing word, accept list for human-verified reference errors (`plan/qa-accepted.json`), unchecked beat = FAIL | Fails the known-bad render it was built against, passes the fixed ones |\n"
+    ]
+   },
+   {
+    "key": [
+     "a5a0bca5576aee3c",
+     "ccc886f86cfa3235",
+     "a304b52b73a7b709"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "| Used finished masters when raw footage existed; ignored the user's tip about an earlier fix | Intake asks for raw + reference; a tip is an instruction |\n",
+     "| QA detector gave clean results on a known-bad file | Prove every detector fails on a known-bad render first (one detector did not; it was removed) |\n",
+     "| Text diff hid a leak | Its expected text came from the pipeline's own mapping; expected text now comes from the reference transcript's anchors |\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/references/project-json.md": [
+   {
+    "key": [
+     "16722d28e2958855"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "| `brand.preset` | a file in `assets/presets/` (copy `example.json` and fill it in); any key set beside it overrides the preset (e.g. `\"series\": \"...\"`). `theme_wav` and `outro_wav` are your own music files and must exist: the intro card plays the first seconds of the theme, the bed continues it under the voice per `music` (seconds after the card starts: duck from `duck_start` to `duck_end` by `duck_db`, fade out from `fade_start` to `fade_end`), and the outro card plays `outro_wav`. Tune `cards` frame counts and `music` times to your music. |\n",
+     "| `asr_prompt` | optional top-level string that primes the QA transcriber, e.g. `\"Um, uh, so, <product names and jargon you say>.\"`. Keep the fillers in it. |\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/align_reference.py": [
+   {
+    "key": [
+     "c68f56df88230f61"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "\"\"\"Recover a reference edit's filler/pause cuts by aligning raw beat audio against the edited master.\n"
+    ]
+   },
+   {
+    "key": [
+     "be72539bf89e65cf"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "The reference master for each video is the raw recording with the editor's removals (filler words,\n"
+    ]
+   },
+   {
+    "key": [
+     "cb71d4b27169b3ef",
+     "88385ff9a68424ec",
+     "16d50d7dfe5afe01"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "stop matching, the reference cut something, and the next raw position is found by searching ahead in\n",
+     "raw for the master's next window. Output: a list of raw (start, end) pieces per beat, plus the\n",
+     "fraction of the beat the reference removed. Written to <project>/work/pieces.json.\n"
+    ]
+   },
+   {
+    "key": [
+     "78bcf6655bf3656b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "MATCH = 0.55          # normalized correlation that counts as \"same audio\"\n"
+    ]
+   },
+   {
+    "key": [
+     "359198430e24cb20"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Best normalized correlation of needle inside hay; returns (score, offset_samples).\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "dc9312243ad6357a"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    A piece that ends mid-sound is extended forward to the next silence when the reference master kept\n"
+    ]
+   },
+   {
+    "key": [
+     "3826d461844df669"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    the reference removed). A piece that starts mid-sound backs up to its onset.\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "2db9189f201a1954"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        # ends stay where refine_cut put them: they match the reference's own cut\n"
+    ]
+   },
+   {
+    "key": [
+     "440f18bfe2f192d5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        # The reference cut here: find where raw resumes the master's next window (search up to 12 s ahead)\n"
+    ]
+   },
+   {
+    "key": [
+     "d30c490c360dc648"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # times can run early; a fixed cap once cut the last two words off a beat (and produced an inverted piece).\n"
+    ]
+   },
+   {
+    "key": [
+     "c0def5602cf287a8",
+     "a73a884394edd370"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "        # pause, it did not cut the word. Extend the last piece through the word instead (a beat once lost its\n",
+     "        # last word to a false cut inside its final two words).\n"
+    ]
+   },
+   {
+    "key": [
+     "f43b0e7d8a6dee63"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # (start after end); an inverted piece crashes the renderer. Drop empty/inverted pieces.\n"
+    ]
+   },
+   {
+    "key": [
+     "b63bcc63ce3d2da3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # one of them the exact spot the user had flagged). Only beats whose mapped span changed, or --redo ids, are re-aligned.\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/caption_qa.py": [
+   {
+    "key": [
+     "76acb7f46bd3a7cb",
+     "5702eb271723be6a"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "gap) and captioned words not heard. Single-word respellings are reported separately\n",
+     "(they are usually ASR noise, but a real misspelling of a product name shows up there too).\n"
+    ]
+   },
+   {
+    "key": [
+     "cbc9874d81e8ccca"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "YR_ASR_PROMPT (set by qa_track.py from the project's \"asr_prompt\") primes the transcriber: keep the fillers in it\n",
+     "and add the names and jargon your videos use.\n"
+    ]
+   },
+   {
+    "key": [
+     "761b01b4adee38f2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "import difflib, os, pathlib, re, subprocess, sys, tempfile\n"
+    ]
+   },
+   {
+    "key": [
+     "e65f7cb6e25fb30f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "from map_beats import norm as canon  # noqa: E402  numbers/contractions/hyphens normalized like the mapper\n"
+    ]
+   },
+   {
+    "key": [
+     "f3bb05e9b3881adb"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "ASR_PROMPT = os.environ.get('YR_ASR_PROMPT') or 'Um, uh, so.'\n"
+    ]
+   },
+   {
+    "key": [
+     "225c94d9ca1cc8b5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    text merged a genuinely repeated sentence into one.)\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "e300d60ef2461235"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            str(wav), word_timestamps=True, initial_prompt=ASR_PROMPT)\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/edge_qa.py": [
+   {
+    "key": [
+     "17f01f4a94677f99"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "On the first project it was run on, 16 of 186 edges leaked under fixed pads and 0 after safe_extend.\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/make_captions.py": [
+   {
+    "key": [
+     "bbe16db9926012c3"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Default style: one centered line near the top, ~190 px at 4K, soft black\n"
+    ]
+   },
+   {
+    "key": [
+     "91c5392cdeed3817",
+     "a544ab8a8562e82f",
+     "b0b7009a7669a1ee"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "Default colors (override them in the brand preset's \"caption\" block):\n",
+     "  text   #f0ede3\n",
+     "  active #c8a64b\n"
+    ]
+   },
+   {
+    "key": [
+     "0ba5c1adf4acd02b"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "MAX_CHARS = 44        # a caption line holds ~44 chars at this size inside the 3840 frame\n"
+    ]
+   },
+   {
+    "key": [
+     "24526246d4ff26d1"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# default instance (assets/fonts, SIL Open Font License). size/margin_v are tuned for a 3840x2160 frame.\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/map_beats.py": [
+   {
+    "key": [
+     "d1cf7a6d2c845d28"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            # window can land a word early or late; a backward-only end snap once cut the last word off a sentence.\n"
+    ]
+   },
+   {
+    "key": [
+     "9a60796afff33b9f"
+    ],
+    "ctx": 1,
+    "old": 0,
+    "new": [
+     "            if b.get('raw_start') is None or b.get('raw_end') is None:   # an anchor matched nothing: flagged below, not a crash\n",
+     "                print(f\"   {b['id']:>4} NOT FOUND from={b['score_from']} to={b['score_to']}\"); continue\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/preflight.py": [
+   {
+    "key": [
+     "ba110ad8274c7453"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    with tempfile.TemporaryDirectory() as d:     # prove the denoiser runs (existing is not the same as working)\n"
+    ]
+   },
+   {
+    "key": [
+     "ecdf8227510fbb85"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        check(bool(b.get(k)) and pathlib.Path(b[k]).exists(), f'brand {k}: {b.get(k)} (your own music file; set it in the brand preset or project.json)')\n"
+    ]
+   },
+   {
+    "key": [
+     "58f8cd643fb10fb7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        # Every beat's pieces must reach its planned first and last words (a false cut once dropped a beat's last word).\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/qa_track.py": [
+   {
+    "key": [
+     "d610261ece6087a2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "\"\"\"QA GATE for a render. Run after every render, BEFORE the user sees it. Writes review/<render>-qa.md.\n"
+    ]
+   },
+   {
+    "key": [
+     "72da6251f68eb5de",
+     "206d1c014841a2c4"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "              prompted with the expected words); a word still absent is a real drop -> FAIL. Checked against a\n",
+     "              known-bad render (three clipped words): it fails that one and passes the fixed one.\n"
+    ]
+   },
+   {
+    "key": [
+     "31a3e0739ebda756",
+     "e166fedc71e345a0"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "Not a gate: a listening model's \"listen\" pass. One reported 8 clipped endings; all 8 were false (silence at every cut).\n",
+     "Use such a pass only as a lead, and verify each claim in the waveform before acting.\n"
+    ]
+   },
+   {
+    "key": [
+     "ed16f73f7976031f"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "import json, os, pathlib, re, subprocess, sys, tempfile\n"
+    ]
+   },
+   {
+    "key": [
+     "4ccc0d3391b466a5"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    env = dict(os.environ, YR_ASR_PROMPT=P.cfg['asr_prompt']) if P.cfg.get('asr_prompt') else None   # names and jargon to prime the ASR\n",
+     "    r = subprocess.run([sys.executable, str(HERE / 'caption_qa.py'), render], capture_output=True, text=True, env=env)\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/render_track.py": [
+   {
+    "key": [
+     "89235908dae73daf"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Where the reference transcript has one copy of a phrase and the kept raw audio has it twice in a\n"
+    ]
+   },
+   {
+    "key": [
+     "da2f9f253d72e1a8",
+     "7e5ae1cae06accea"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "    - if nothing within reach beyond the reference's edge falls 18 dB under the kept side's peak, there is no gap:\n",
+     "      the reference cut mid-sound on purpose (e.g. a removed false start running into the kept word), so do not extend;\n"
+    ]
+   },
+   {
+    "key": [
+     "d9a81855976fcbe2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    Fixed pads once pushed a cold open into the words on both sides of it.\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "fe033bff253e9261"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"T\" burst, so the cut played \"-day\". Walking back from the ASR time:\n"
+    ]
+   },
+   {
+    "key": [
+     "30df164ae80d2cad"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "      which is where the reference edit cuts (an \"uh\" before \"Okay\").\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "3bb96713fad73ea7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # \"right now 98\", ASR put the boundary inside \"now\", so cutting there played \"-ow 98\".\n"
+    ]
+   },
+   {
+    "key": [
+     "30f999555bb91f3d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Raw pieces for a beat = the reference edit's kept spans (work/pieces.json) minus any approved skips.\n"
+    ]
+   },
+   {
+    "key": [
+     "c49c5b16c7d22540",
+     "6ad40d371259814d",
+     "9e44960ac9fe13e5"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "    # the handle slip past where the pad had correctly stopped, into a removed \"so,\")\n",
+     "    # Beat edges snap to the silence around the first/last word, bounded by the neighboring words' ASR times so a\n",
+     "    # removed word next door can never be pulled back in.\n"
+    ]
+   },
+   {
+    "key": [
+     "300eac7738d74f81",
+     "48fdc8dda76e3890"
+    ],
+    "ctx": 0,
+    "old": 2,
+    "new": [
+     "    time. Restoring reference words there would caption audio we removed.\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "23ce7b61d667709c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    \"\"\"Join ASR hyphen fragments; take hand-corrected reference spelling where the master captions exist;\n"
+    ]
+   },
+   {
+    "key": [
+     "924ee2b55c7cda6d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            if os.environ.get('CAPDEBUG') and any(x in a_t for x in os.environ['CAPDEBUG'].lower().split(',')):   # CAPDEBUG=word,word\n"
+    ]
+   },
+   {
+    "key": [
+     "d5f4da20b6616e20"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                    # ASR \"going to\" where the reference (and the speaker) say \"gonna\": merge the pair into one caption word\n"
+    ]
+   },
+   {
+    "key": [
+     "542c626e7fdcd825"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                    # Pairing alone captioned \"77.5% .5 % C.\".\n"
+    ]
+   },
+   {
+    "key": [
+     "d388a3d50db0a6e8",
+     "cd6211a5cae07aa3",
+     "75b78a67bd8df6b0"
+    ],
+    "ctx": 0,
+    "old": 3,
+    "new": [
+     "                    # A small local block where no word pairs up (an ASR garble of a short sentence): the reference is\n",
+     "                    # hand-corrected, so its words replace the ASR's across the same span, timed in proportion to their length.\n"
+    ]
+   },
+   {
+    "key": [
+     "fe13829c65c48a8d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                    # its closest reference spelling. Skipping these blocks once left one misspelling in 22 captions.\n"
+    ]
+   },
+   {
+    "key": [
+     "a9422de9befad057"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "                pos, toks = ins                     # a reference word the ASR missed: add it only if the cut audio has speech there\n"
+    ]
+   },
+   {
+    "key": [
+     "422fdfc8aa9b1426"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    Single number words (\"one more run\", \"a hundred\") stay words. (A caption once read \"98 out of one hundred and twenty\".)\"\"\"\n"
+    ]
+   },
+   {
+    "key": [
+     "50e180fb4d815f08"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # File names use the viewer-facing label (\"track2\"), never the internal key (\"side2\").\n"
+    ]
+   },
+   {
+    "key": [
+     "aa59883f5e1c535d"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        # 5. music (default handoff: theme at full level from the card start, duck -20 dB over 4.5-5.3 s,\n"
+    ]
+   },
+   {
+    "key": [
+     "c1f654a3f8efe570"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "        # (an integer intermediate clipped ~11 times a second and sounded blown out).\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/setup_env.sh": [
+   {
+    "key": [
+     "0c3a1ea394a6d483"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# Pins that work together: DeepFilterNet 0.5.6 needs torch 2.5.x and numpy 1.x;\n"
+    ]
+   },
+   {
+    "key": [
+     "779665c505baf344"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "# 25 minutes in while \"deepFilter exists\" was true.\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/text_diff_qa.py": [
+   {
+    "key": [
+     "a46bb66a45e4cdf7"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "\"\"\"Transcript diff QA: what my render says vs what the reference master says for the same beats.\n"
+    ]
+   },
+   {
+    "key": [
+     "79ca363762932c8e"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Transcribes the rendered file (faster-whisper small.en), builds the expected text from the reference edit's\n"
+    ]
+   },
+   {
+    "key": [
+     "d4634e2800ebd29c"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "Reports runs of EXTRA words (leaks) and MISSING words (clipped or dropped),\n"
+    ]
+   },
+   {
+    "key": [
+     "f90b6daec2930fa2"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    # Expected text comes from the PLAN's anchor phrases found in the reference's own transcript, never from\n"
+    ]
+   },
+   {
+    "key": [
+     "22b89a6723406937"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "    from map_beats import norm as canon            # numbers, contractions, hyphens: same normalization as the mapper\n"
+    ]
+   },
+   {
+    "key": [
+     "7bf126c0243116e0"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "            # length (one word was heard only in the tight window). Any pass hearing the words resolves them.\n"
+    ]
+   }
+  ],
+  "youtube-recut/skills/youtube-recut/scripts/yr.py": [
+   {
+    "key": [
+     "cf281a01e91e22e6"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  <project>/plan/edit-plan.md the plan in prose, with the user's rulings\n"
+    ]
+   },
+   {
+    "key": [
+     "30950268f925f908"
+    ],
+    "ctx": 0,
+    "old": 1,
+    "new": [
+     "  <project>/review/           QA reports, review proxies, the user's revisions log\n"
+    ]
+   }
+  ]
+ }
+}

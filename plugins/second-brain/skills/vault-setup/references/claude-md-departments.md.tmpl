@@ -1,0 +1,28 @@
+# Departments: routing index
+
+One note per function, team, or region the owner is accountable for. This is the org-shaped view: what each area is responsible for, who runs it, what is currently true about it.
+
+Use it when the unit of thought is the function rather than a person or a project. "How is that region doing" is a department question. "What did its lead commit to" is a [[Team/CLAUDE|Team]] question.
+
+## What goes in a department note
+
+| Content type | Goes to |
+|---|---|
+| Charter, remit, who leads it, headcount | `Departments/<Name>.md` (the note itself) |
+| Standing metrics, targets, current status | the same note, under `## Current state` |
+| A recurring process the function runs | `Departments/<Name>/processes/{name}.md` |
+| A specific initiative with a start and an end | `Projects/`, linked from here |
+| A person in that function | `Team/`, linked from here |
+
+## Rules
+
+- **A department is not a project.** Departments persist and have no completion date. If it can finish, it belongs in `Projects/`.
+- **Frontmatter.** `type: department`, `status: active | dormant`, `lead`, `last_touched: YYYY-MM-DD`.
+- **Current state is overwritten, history is appended.** The `## Current state` block reflects now. Anything worth keeping goes into a dated entry below it.
+- **Single-user honesty.** This vault is the owner's own record of the organization, not the organization's system of record. Do not write it as though the department reads it, and do not let it drift into a second source of truth for facts that live in the org's real tools.
+
+## Related
+
+- [[CLAUDE|Vault root CLAUDE.md]]
+- [[Team/CLAUDE|Team routing]]
+- [[Projects/CLAUDE|Projects routing]]

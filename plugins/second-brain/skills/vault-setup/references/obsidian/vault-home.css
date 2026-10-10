@@ -1,0 +1,159 @@
+/* vault-home.css
+ *
+ * A restrained visual layer for a scaffolded vault. Authored for the
+ * vault-setup skill; no third-party CSS is vendored here.
+ *
+ * Everything below is driven by Obsidian's own theme variables, so it
+ * inherits whatever theme the owner picks and stays legible in both
+ * light and dark. Nothing here hardcodes a colour that could fight the
+ * theme.
+ *
+ * Scope: the hero and card rules only apply to notes that opt in with
+ *   cssclasses:
+ *     - home
+ * in their frontmatter. The Bases and readability rules are vault-wide
+ * but deliberately gentle.
+ *
+ * SELECTOR TRAP, verified on screen 2026-08-24 -- do not "fix" this back.
+ * A `cssclasses` value lands ON the rendered view element, not on an
+ * ancestor of it. So `.home .markdown-preview-view h2` matches NOTHING:
+ * it asks for a preview view INSIDE .home, and .home is the preview view.
+ * Scope with `.home h2` instead. This file shipped with the descendant
+ * form and every rule in it silently did nothing -- the snippet loaded
+ * fine, the class was set fine, and the page still rendered as stock
+ * Obsidian, which is why only opening it in the app caught it. Proven by
+ * appending `h2 { color: red }` (which applied, so the file was live) and
+ * then removing the descendant combinator (which made everything apply).
+ */
+
+/* ---------------------------------------------------------------
+   1. Home note: hero heading
+   --------------------------------------------------------------- */
+
+.home h1,
+.home .cm-header-1 {
+  font-size: 2.4em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  border-bottom: none;
+  margin-bottom: 0.15em;
+}
+
+/* The line straight after the H1 reads as a subtitle. */
+.home h1 + p {
+  color: var(--text-muted);
+  font-size: 1.05em;
+  margin-top: 0;
+  margin-bottom: 2em;
+}
+
+/* ---------------------------------------------------------------
+   2. Home note: section headings as quiet rules
+   --------------------------------------------------------------- */
+
+.home h2 {
+  font-size: 0.82em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0.5em;
+  margin-top: 2.4em;
+}
+
+/* ---------------------------------------------------------------
+   3. Home note: link lists become cards
+   --------------------------------------------------------------- */
+
+.home ul {
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.6rem;
+}
+
+.home ul > li {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary-alt);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.home ul > li:hover {
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+.home ul > li a.internal-link {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Nested lists inside a card stay plain text, not nested cards. */
+.home ul ul {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.home ul ul > li {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.home ul ul > li:hover {
+  transform: none;
+}
+
+/* ---------------------------------------------------------------
+   3b. Home note: hide the properties panel
+   --------------------------------------------------------------- */
+
+/* On the two owner-facing pages, the frontmatter is plumbing. Obsidian
+   renders it as an editable block above the note's first line, so the
+   first thing the owner reads on their own landing page is `title`,
+   `type`, `cssclasses`, an × to delete each one, and "Add property".
+   Hidden here on .home ONLY. Everywhere else the panel stays, because on
+   a project hub `status` and `next_step` are fields the owner may
+   genuinely want to edit by clicking rather than by asking. */
+.home .metadata-container {
+  display: none;
+}
+
+/* ---------------------------------------------------------------
+   4. Bases: table views
+   --------------------------------------------------------------- */
+
+.bases-table-container th {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.bases-table-container tr:hover td {
+  background: var(--background-modifier-hover);
+}
+
+/* ---------------------------------------------------------------
+   5. Vault-wide readability
+   --------------------------------------------------------------- */
+
+/* Inline properties block sits quieter than the note body. */
+.metadata-container {
+  font-size: 0.88em;
+}
+
+/* Wikilinks to notes that do not exist yet should look like an
+   invitation, not an error. */
+.markdown-preview-view a.internal-link.is-unresolved {
+  opacity: 0.55;
+  text-decoration: underline dotted;
+}

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Record card</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=block" rel="stylesheet">
+<style>
+  :root { --bg:#0e0f0e; --ink:#f0ede3; --accent:#c8a64b; --line-strong:rgba(240,237,227,.20); }
+  * { box-sizing:border-box; margin:0; }
+  html,body { width:1920px; height:1080px; overflow:hidden; background:var(--bg); font-family:"Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); }
+  #stage { position:absolute; inset:0; }
+  .disc { position:absolute; left:530px; top:110px; width:860px; height:860px; border-radius:50%;
+    background:repeating-radial-gradient(circle, #151615 0 2px, #0b0c0b 2px 5px);
+    box-shadow:0 0 0 1px var(--line-strong), 0 40px 90px rgba(0,0,0,.65); }
+  .sheen { position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(240,237,227,.09) 28deg, transparent 64deg, transparent 180deg, rgba(240,237,227,.06) 208deg, transparent 244deg); }
+  .label { position:absolute; left:50%; top:50%; width:400px; height:400px; margin:-200px 0 0 -200px; border-radius:50%; background:var(--accent); color:var(--bg); text-align:center; }
+  .label .ring { position:absolute; inset:14px; border-radius:50%; border:1.5px solid rgba(14,15,14,.35); }
+  .label .top { position:absolute; top:74px; width:100%; }
+  .label .brand { font:800 50px/1 "Plus Jakarta Sans"; letter-spacing:-.03em; }
+  .label .name { margin-top:12px; font:700 17px/1 "Plus Jakarta Sans"; letter-spacing:.2em; text-transform:uppercase; opacity:.8; }
+  .label .sub, .label .ep { font:600 13px/1 "Plus Jakarta Sans"; letter-spacing:.2em; text-transform:uppercase; opacity:.72; }
+  .label .bottom { position:absolute; bottom:70px; width:100%; padding:0 56px; }
+  .label .ep { white-space:nowrap; letter-spacing:.14em; }
+  .label .title { margin-top:10px; font:700 21px/1.2 "Plus Jakarta Sans"; }
+  .hole { position:absolute; left:50%; top:50%; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%; background:var(--bg); }
+  .arm { position:absolute; left:1460px; top:120px; z-index:5; }
+  .arm .base { position:absolute; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle at 40% 35%, #3a3b39, #1a1b1a 70%); box-shadow:0 0 0 2px var(--line-strong), 0 10px 30px rgba(0,0,0,.6); }
+  .arm .base::after { content:""; position:absolute; left:40px; top:40px; width:40px; height:40px; border-radius:50%; background:var(--accent); }
+  .arm .rod { position:absolute; left:56px; top:60px; width:14px; height:520px; border-radius:7px; background:linear-gradient(90deg,#8d8a80,#e9e5d8 45%,#8d8a80); transform-origin:7px 0; filter:drop-shadow(0 18px 14px rgba(0,0,0,.5)); }
+  .arm .head { position:absolute; left:-18px; bottom:-40px; width:50px; height:78px; border-radius:8px; background:linear-gradient(#2a2b29,#121312); box-shadow:0 0 0 2px var(--accent); }
+  .right { position:absolute; left:760px; top:170px; }
+  .eyebrow { font:600 24px/1 "Plus Jakarta Sans"; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+  h2 { margin-top:26px; font:600 84px/1.05 "Plus Jakarta Sans"; letter-spacing:-.02em; }
+  .urls { margin-top:38px; display:flex; gap:22px; }
+  .url { padding:18px 28px; border:1.5px solid var(--line-strong); border-radius:999px; font:600 34px/1 "Plus Jakarta Sans"; }
+  .url.primary { border-color:var(--accent); color:var(--accent); }
+  #fade { position:absolute; inset:0; background:#000; opacity:0; z-index:50; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="disc" id="disc"><div class="sheen" id="sheen"></div>
+    <div class="label"><div class="ring"></div>
+      <div class="top"><div class="brand" id="brand"></div><div class="name" id="name"></div></div>
+      <div class="bottom"><div class="ep" id="ep"></div><div class="title" id="title"></div></div>
+      <div class="hole"></div></div></div>
+  <div class="arm" id="arm"><div class="base"></div><div class="rod" id="rod"><div class="head"></div></div></div>
+  <div class="right" id="right">
+    <div class="eyebrow" id="e1"></div>
+    <h2 id="e2"></h2>
+    <div class="urls" id="e3"></div>
+  </div>
+  <div id="fade"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') || 'intro';           // intro | outro
+  const side = q.get('side') || '1';
+  const P = (k, d) => q.get(k) || d;
+  document.getElementById('ep').textContent = mode === 'intro' ? `${P('series', '')} · ${P('track_word', 'Track')} ${side}` : `End of ${P('track_word', 'Track').toLowerCase()} ${side}`;
+  document.getElementById('brand').textContent = P('brand', '');
+  document.getElementById('name').textContent = P('name', '');
+  document.getElementById('e1').textContent = P('eyebrow', '');
+  document.getElementById('e2').textContent = P('headline', '');
+  P('urls', '').split('|').filter(Boolean).forEach((u, i) => {
+    const el = document.createElement('span'); el.className = 'url' + (i === 0 ? ' primary' : ''); el.textContent = u;
+    document.getElementById('e3').appendChild(el);
+  });
+  document.getElementById('title').textContent = mode === 'intro' ? (q.get('title') || '') : '';
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const ease = (x) => { x = clamp(x); return x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2; };
+  const span = (t, a, b) => ease((t - a) / (b - a));
+  const $ = (id) => document.getElementById(id);
+  const RPM_DEG_PER_S = 200;                        // 33 1/3 rpm
+  window.setT = (t, dur) => {
+    $('sheen').style.transform = `rotate(${t * RPM_DEG_PER_S}deg)`;
+    if (mode === 'intro') {
+      const inn = span(t, 0, 0.45);
+      $('disc').style.opacity = inn;
+      $('disc').style.transform = `scale(${0.94 + 0.06 * inn})`;
+      const swing = span(t, 0.3, 1.4);            // arm swings from parked (2deg) to the record edge (24deg)
+      const drop = span(t, 1.4, 1.75);              // then settles onto the groove
+      $('rod').style.transform = `rotate(${2 + 22 * swing}deg) scale(${1.03 - 0.03 * drop})`;
+      $('arm').style.opacity = span(t, 0, 0.3);
+      $('right').style.display = 'none';
+      $('fade').style.opacity = span(t, dur - 0.25, dur);
+    } else {
+      const slide = span(t, 0.4, 1.6);
+      $('disc').style.left = `${530 - 770 * slide}px`;
+      $('rod').style.transform = `rotate(${24 - 22 * span(t, 0.1, 0.6)}deg)`;  // arm lifts back to rest
+      $('arm').style.opacity = 1 - span(t, 0.5, 1.1);
+      $('e1').style.opacity = span(t, 1.3, 1.8);
+      $('e2').style.opacity = span(t, 1.5, 2.1);
+      $('e2').style.transform = `translateY(${16 * (1 - span(t, 1.5, 2.1))}px)`;
+      $('e3').style.opacity = span(t, 1.8, 2.4);
+      $('fade').style.opacity = span(t, dur - 0.4, dur);
+    }
+  };
+  window.ready = document.fonts.ready.then(() => { window.setT(0, 3); return true; });
+</script>
+</body>
+</html>

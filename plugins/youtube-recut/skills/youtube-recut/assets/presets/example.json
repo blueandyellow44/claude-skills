@@ -1,0 +1,16 @@
+{
+  "name": "example",
+  "about": "Starter preset. Copy it, rename it, and replace every value below with your own channel's. The card text, the music files and the timings are yours to supply; nothing here ships with music.",
+  "series": "Your Series",
+  "track_word": "Track",
+  "card_brand": "yourname.example",
+  "card_name": "Your Name",
+  "outro_eyebrow": "Your tagline",
+  "outro_headline": "Thanks for watching.",
+  "outro_urls": ["yourname.example"],
+  "theme_wav": "~/path/to/your-theme.wav",
+  "outro_wav": "~/path/to/your-outro.wav",
+  "cards": {"intro_frames": 144, "outro_frames": 339, "fps": 30, "intro_fade_s": 0.45},
+  "music": {"duck_start": 4.5, "duck_end": 5.3, "duck_db": -20, "fade_start": 22.8, "fade_end": 24.8},
+  "caption": {"font": "Manrope Cap", "size": 204, "margin_v": 56, "text": "&H00E3EDF0&", "active": "&H004BA6C8&"}
+}
