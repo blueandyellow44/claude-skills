@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The public scrub for the standalone skill exports (youtube-recut, skill-toolkit,
+The public scrub for the standalone skill exports (youtube-recut,
 news-scoring), as line patches that carry no private text. Generalized from
 scripts/city-walks-public/scrub.py.
 

@@ -2,7 +2,6 @@
 # Export three standalone plugins from their private sources into plugins/,
 # then apply the public scrub:
 #   plugins/youtube-recut   the youtube-recut plugin
-#   plugins/skill-toolkit   the skill-builder skill only
 #   plugins/news-scoring    litmus-editorial-analyzer and ph-balance-scorer
 # Edit the sources, never these copies; re-run this to refresh them.
 #
@@ -18,15 +17,14 @@
 #                                     (the input for `scrub.py make`; keep it out of the repo)
 set -euo pipefail
 recut="${YOUTUBE_RECUT_SRC:-$HOME/.claude/local-marketplaces/second-brain/youtube-recut}"
-builder="${SKILL_BUILDER_SRC:-$HOME/.claude/local-marketplaces/second-brain/skill-forge/skills/skill-builder}"
 litmus="${LITMUS_ANALYZER_SRC:-$HOME/Political Ap/skills/litmus-editorial-analyzer}"
 ph="${PH_SCORER_SRC:-$HOME/Political Ap/skills/ph-balance-scorer}"
 ph_installed="${PH_SCORER_INSTALLED:-$HOME/.claude/skills/ph-balance-scorer}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-plugins=(youtube-recut skill-toolkit news-scoring)
 
 [ -f "$recut/.claude-plugin/plugin.json" ] || { echo "no plugin at $recut" >&2; exit 1; }
-for d in "$builder" "$litmus" "$ph"; do
+plugins=(youtube-recut news-scoring)
+for d in "$litmus" "$ph"; do
   [ -f "$d/SKILL.md" ] || { echo "no skill at $d" >&2; exit 1; }
 done
 # The scorer exists in two places. They must agree, or the choice is not ours to make.
@@ -48,7 +46,6 @@ copy() { # copy <src> <dst> [more tar excludes], leaving junk, state and media b
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 copy "$recut" "$tmp/out/youtube-recut" --exclude='./skills/youtube-recut/assets/presets'
-copy "$builder" "$tmp/out/skill-toolkit/skills/skill-builder"
 copy "$litmus" "$tmp/out/news-scoring/skills/litmus-editorial-analyzer"
 copy "$ph" "$tmp/out/news-scoring/skills/ph-balance-scorer"
 
