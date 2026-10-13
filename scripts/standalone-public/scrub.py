@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 The public scrub for the standalone skill exports (youtube-recut,
-news-scoring), as line patches that carry no private text. Generalized from
-scripts/city-walks-public/scrub.py.
+news-scoring), as line patches that carry no private text.
 
 The private sources are not git repos, and a list of (old, new) string pairs
 would publish the very text being removed. So each change is stored as the

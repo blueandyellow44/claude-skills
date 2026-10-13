@@ -183,24 +183,6 @@
       ]
     },
     {
-      "name": "city-walks-workflow",
-      "source": "./plugins/city-walks-workflow",
-      "description": "Workflow for a hand-drawn walking map (the SF City Walks map at wallywalks.app): landmark pieces drawn from their survey, piece review with evidence bound to the sprite, people and walkers as map sprites, map repairs and a pre-audit check, a new-city pipeline, address autocomplete, shared-Chrome discipline, the test.wallywalks.app preview deploy, per-branch production deploys, and a Google sign-in checklist. Its hooks are tripwires, not containment.",
-      "version": "0.5.4",
-      "author": {
-        "name": "Max Sheahan",
-        "url": "https://maxsheahan.com"
-      },
-      "license": "MIT",
-      "category": "maps",
-      "keywords": [
-        "maps",
-        "sprites",
-        "cloudflare-pages",
-        "illustration"
-      ]
-    },
-    {
       "name": "second-brain",
       "source": "./plugins/second-brain",
       "description": "Session manager for a markdown vault: session wrap and daily logs, a per-session ledger, ruling capture, per-object decision records, agenda and weekly review, vault scaffolding, and vault health (audit, grooming, canon size budgets).",

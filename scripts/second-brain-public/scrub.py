@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 The public scrub for the second-brain export, as line patches that carry no
-private text. Same mechanism as scripts/city-walks-public/scrub.py, plus renames.
+private text. Same mechanism as scripts/standalone-public/scrub.py, plus renames.
 
 The private sources are not git repos, and a list of (old, new) string pairs would
 publish the very text being removed. So each change is stored as the sha256 of
