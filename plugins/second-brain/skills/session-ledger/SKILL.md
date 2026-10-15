@@ -45,7 +45,7 @@ The script is `${CLAUDE_PLUGIN_ROOT}/skills/session-ledger/scripts/ledger.py`, c
 ## Outputs
 
 - `~/.claude/session-state/<SID>.ledger.json`, printed back as open items after every write.
-- Read by `session-wrap` at the end of the session. Hooks of your own can read the same file (to re-deliver it after compaction, or to list open items before a commit); none ship with this plugin, so re-reading it is this skill's job.
+- Read by `session-wrap` at the end of the session. This plugin's SessionStart hook re-delivers its open items after compaction or a resume (`hooks/sb_startup.py`); between those, re-reading it with `show` is this skill's job.
 
 ## Failure handling
 

@@ -1,0 +1,48 @@
+{
+  "description": "Session manager hooks for a markdown vault (set SECOND_BRAIN_VAULT): deliver rules, today's daily, open todos, newest lessons and the working folder's project hub at session start; re-deliver the hub and the session ledger after compaction or resume; name files that changed under the session at each prompt; deliver a project's hub on the first edit in its workspace; remind once when a session that edited files ends without a daily entry. Set SECOND_BRAIN_HOOKS=off to silence them all.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_startup.py\"", "timeout": 15 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_drift.py\" prompt", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_drift.py\" tool", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_lifecycle.py\" stop", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_lifecycle.py\" precompact", "timeout": 10 }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sb_lifecycle.py\" end", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

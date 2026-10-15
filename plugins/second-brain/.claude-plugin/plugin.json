@@ -1,9 +1,9 @@
 {
   "name": "second-brain",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "author": {
     "name": "Max Sheahan",
     "url": "https://maxsheahan.com"
   },
-  "description": "Session manager for a markdown vault: session wrap and daily logs, a per-session ledger, ruling capture, per-object decision records, agenda and weekly review, vault scaffolding, and vault health (audit, grooming, canon size budgets)."
+  "description": "Session manager for a markdown vault: hooks that deliver rules, today's daily, open todos, newest lessons and the project hub into every session and re-deliver them after compaction, drift checks on every prompt, session wrap and daily logs, a per-session ledger, ruling capture, per-object decision records, agenda and weekly review, vault scaffolding, and vault health (audit, grooming, canon size budgets)."
 }

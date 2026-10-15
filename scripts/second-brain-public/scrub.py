@@ -9,6 +9,8 @@ the source lines it replaces (plus a few unchanged lines around them, until that
 run of lines is unique in the file) and the public lines that replace them.
 
   scrub.py apply <tree>               rewrite an exported tree in place, then scan it
+  scrub.py overlay-bases <tree>       record what the overlay replaces, from a scrubbed
+                                      tree made WITHOUT the overlay (SKIP_OVERLAY=1)
   scrub.py make <src-tree> <pub-tree> write patches.json from a raw export
                                       (export-second-brain.sh --raw DIR) and the
                                       hand-edited public copy of it
@@ -16,6 +18,13 @@ run of lines is unique in the file) and the public lines that replace them.
 `apply` fails loudly, changing nothing, when a source has moved under a patch:
 a run of lines that is gone or no longer unique, a file that is new, or a file
 that has gone. Then re-derive the public copy and run `make` again.
+
+Overlay: files authored for the public plugin only (the session hooks, and the public
+text of plugin.json, README.md and two SKILL.md files that describe them) live in
+overlay/ and are copied in after the patches, before the scan. A file there that
+replaces an exported file carries the hash of the exported text it was written against
+in overlay.json; when the export under it changes, `apply` fails and names it. Re-read
+the new export, carry the change into the overlay copy, then `scrub.py overlay-bases <tree>`.
 
 Renames: a source file `x.md` whose public copy is `x.md.tmpl` is patched and then
 renamed. The vault templates carry Obsidian wikilinks on purpose (they are written
@@ -32,6 +41,9 @@ import difflib, hashlib, json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PATCHES = os.path.join(HERE, "patches.json")
+OVERLAY = os.path.join(HERE, "overlay")
+OVERLAY_BASES = os.path.join(HERE, "overlay.json")
+OVERLAY_SKIP = ("__pycache__", ".pyc", ".DS_Store")
 CHECK_PUBLIC = os.path.join(HERE, "..", "check-public.sh")
 MAX_CONTEXT = 12
 RENAME_SUFFIX = ".tmpl"
@@ -152,9 +164,48 @@ def apply(tree):
     for f, text in p["added"].items():
         os.makedirs(os.path.dirname(os.path.join(tree, f)), exist_ok=True)
         open(os.path.join(tree, f), "w", encoding="utf-8").write(text)
+    n_overlay = 0 if os.environ.get("SKIP_OVERLAY") == "1" else overlay(tree)
     scan(tree, p["banned"])
+    print(f"overlay: {n_overlay} files")
     print(f"scrub applied: {sum(len(v) for v in p['files'].values())} hunks in {len(p['files'])} files, "
           f"{len(p['renames'])} renamed, {len(p['added'])} added; scan clean")
+
+
+def overlay_files():
+    return [f for f in files_in(OVERLAY) if not any(x in f for x in OVERLAY_SKIP)]
+
+
+def overlay(tree):
+    """Copy overlay/ into the scrubbed tree; refuse if a replaced file moved under it."""
+    bases = json.load(open(OVERLAY_BASES, encoding="utf-8")) if os.path.exists(OVERLAY_BASES) else {}
+    problems = []
+    for f in overlay_files():
+        dst = os.path.join(tree, f)
+        if os.path.exists(dst):
+            if f not in bases:
+                problems.append(f"{f}: replaces an exported file but has no base hash in overlay.json")
+            elif h(open(dst, encoding="utf-8").read()) != bases[f]:
+                problems.append(f"{f}: the exported file it replaces has changed")
+        elif f in bases:
+            problems.append(f"{f}: the exported file it replaces is gone")
+    if problems:
+        sys.exit("OVERLAY BASE CHANGED; nothing was copied (see the docstring):\n  " + "\n  ".join(problems))
+    for f in overlay_files():
+        dst = os.path.join(tree, f)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(os.path.join(OVERLAY, f), encoding="utf-8") as src, open(dst, "w", encoding="utf-8") as out:
+            out.write(src.read())
+        os.chmod(dst, 0o755 if f.endswith((".py", ".sh")) else 0o644)
+    return len(overlay_files())
+
+
+def overlay_bases(tree):
+    bases = {f: h(open(os.path.join(tree, f), encoding="utf-8").read())
+             for f in overlay_files() if os.path.exists(os.path.join(tree, f))}
+    with open(OVERLAY_BASES, "w", encoding="utf-8") as fh:
+        json.dump(bases, fh, indent=1, sort_keys=True)
+        fh.write("\n")
+    print(f"wrote {OVERLAY_BASES}: {len(bases)} replaced files")
 
 
 def check_public_pattern():
@@ -189,6 +240,8 @@ def scan(tree, banned):
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "apply":
         apply(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "overlay-bases":
+        overlay_bases(sys.argv[2])
     elif len(sys.argv) == 4 and sys.argv[1] == "make":
         make(sys.argv[2], sys.argv[3])
     else:

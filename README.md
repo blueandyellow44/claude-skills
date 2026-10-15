@@ -23,7 +23,7 @@ Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic
 | `secure-platform` | `cloudflare-pages-workers`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
 | `secure-gate` | `secure-gate` | Refusing a launch while any check is failing or unknown |
 | `voice-gate` | `voice-gate`, `voice-gate-reviser`, `voice-gate-builder`, `voice-gate-interview` | Checking a finished draft against a voice profile (lives in its own repo) |
-| `second-brain` | 15 skills, from `session-wrap` to `vault-doctor` | A session manager for a markdown vault |
+| `second-brain` | 15 skills, from `session-wrap` to `vault-doctor`, plus session hooks | A session manager for a markdown vault |
 | `youtube-recut` | `youtube-recut` | Recutting raw footage into a tighter YouTube edit, with checks before any render is handed over |
 | `news-scoring` | `litmus-editorial-analyzer`, `ph-balance-scorer` | Scoring how a news article is written, not what it covers |
 
@@ -67,7 +67,7 @@ Installs from [its own repo](https://github.com/blueandyellow44/voice-gate) thro
 
 ### second-brain
 
-A session manager for a markdown vault that opens in Obsidian. It keeps what a Claude Code session did, decided, and left open in files you own: a daily log, a todo list, one hub note per project, a lessons file, and a short rules file. Set `SECOND_BRAIN_VAULT` to your vault, or run `vault-setup` to scaffold one. The skills expect the layout in the plugin README and do not adapt to a different one. The hooks the private version runs with are not included; the README lists what that costs.
+A session manager for a markdown vault that opens in Obsidian. It keeps what a Claude Code session did, decided, and left open in files you own: a daily log, a todo list, one hub note per project, a lessons file, and a short rules file. Set `SECOND_BRAIN_VAULT` to your vault, or run `vault-setup` to scaffold one. The skills expect the layout in the plugin README and do not adapt to a different one. Since 1.7.0 it ships hooks: at session start they deliver the rules, today's daily, open todos, the newest lessons and the working folder's project hub into context; after compaction or a resume they bring back the hub and the session ledger; on every prompt they name any file that changed under the session. The per-prompt lesson and skill retrieval the private version runs is not included; the plugin README says what that costs.
 
 ### youtube-recut
 

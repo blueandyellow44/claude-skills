@@ -136,7 +136,7 @@ Tested skills, hooks and executable workflows are more durable fixes than anothe
 
 ### Step 7: report + lifecycle
 
-If you run session-lifecycle hooks of your own (none ship with this plugin), read this session's state file at `~/.claude/session-state/<session_id>.json` if present; such hooks typically record `compactions` and edit/turn counts. Without one, judge context health from what you observed in the session.
+This plugin's hooks keep a manifest at `~/.claude/session-state/<session_id>.sb-manifest.jsonl`: one JSON line per delivered source, file this session read or edited (`touched`), and compaction (`compaction`). Count those for context health. If the hooks are off (`SECOND_BRAIN_HOOKS=off`) or the file is missing, judge from what you observed in the session.
 
 Determine the next phase's task type from the `next_step` just written, look it up in `references/model-guide.md`, and report:
 
