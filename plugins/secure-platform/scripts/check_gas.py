@@ -11,8 +11,11 @@
                      narrow one exists (drive, gmail full, mail.google.com,
                      spreadsheets) FAIL low; no oauthScopes: UNKNOWN (scopes
                      are auto-detected and not reviewable from the repo).
-  gas.keys-in-code   a key-shaped value or an apiKey literal in .gs/.html/.js
-                     FAILs high: use PropertiesService.
+  gas.keys-in-code   a key-shaped value or an apiKey literal in .gs/.html/.js/.ts
+                     (clasp transpiles .ts on push) FAILs high: use
+                     PropertiesService. A name containing "key" is not enough on
+                     its own: a Drive object id (SPREADSHEET_KEY passed to
+                     openById) is an identifier, not a credential.
 """
 import json
 import os
@@ -32,7 +35,19 @@ BROAD = {
     "https://www.googleapis.com/auth/spreadsheets": "spreadsheets.currentonly",
     "https://www.googleapis.com/auth/documents": "documents.currentonly",
 }
-KEY_LITERAL = re.compile(r"""\w*(?:key|pass|password|passwd|secret|token|credential)\w*['"]?\s*[:=]\s*['"]([^'"\s]{16,})['"]""", re.I)
+KEY_LITERAL = re.compile(r"""(\w*(?:key|pass|password|passwd|secret|token|credential)\w*)['"]?\s*[:=]\s*['"]([^'"\s]{16,})['"]""", re.I)
+SCAN_EXT = (".gs", ".html", ".js", ".ts")
+# Apps Script code calls Drive object ids "keys" (SpreadsheetApp.openById(SPREADSHEET_KEY)); an id is not a credential.
+DRIVE_OBJECT = re.compile(r"(?:^|_)(?:SPREADSHEET|SHEET|DOC|DOCUMENT|FOLDER|FILE|FORM|PRESENTATION|SLIDE|SLIDES|CALENDAR|SCRIPT|DEPLOYMENT|TEMPLATE|DRIVE)(?:_|$)", re.I)
+DRIVE_ID = re.compile(r"^[A-Za-z0-9_\-]{20,70}$")
+
+
+def _drive_id(name, value, text):
+    """A Drive/Sheets/Docs id: the value has an id shape (no symbols) AND the name says a Drive
+    object or the variable is passed to an openById/getFileById call."""
+    if not DRIVE_ID.match(value):
+        return False
+    return bool(DRIVE_OBJECT.search(name)) or bool(re.search(r"ById\(\s*" + re.escape(name) + r"\s*\)", text))
 
 
 def _entropy(s):
@@ -68,7 +83,7 @@ def main():
                                   fix="DOMAIN for one school's staff, or ANYONE (signed-in Google users) with an allow-list; never anonymous while executing as the deployer"))
             elif acc == "ANYONE":
                 res.append(result("gas.webapp-access" + tag, "Web app access is limited", "FAIL", "%s: access ANYONE (any Google account)" % rel, severity="low",
-                                  fix="DOMAIN if the audience is one organisation; if it must be ANYONE, check Session.getActiveUser() against an allow-list"))
+                                  fix="DOMAIN if the audience is one organization; if it must be ANYONE, check Session.getActiveUser() against an allow-list"))
             else:
                 res.append(result("gas.webapp-access" + tag, "Web app access is limited", "PASS", "%s: access %s" % (rel, acc or "default (MYSELF)")))
         scopes = m.get("oauthScopes")
@@ -83,20 +98,20 @@ def main():
                 res.append(result("gas.scopes" + tag, "OAuth scopes are narrow", "PASS", "%s: %d explicit scope(s), none full-access" % (rel, len(scopes))))
     if manifests:
         hits = []
-        for p in walk.files(repo, exts=(".gs", ".html", ".js"), tests=False):
+        for p in walk.files(repo, exts=SCAN_EXT, tests=False):
             t = walk.read(p)
             for rx in ledger.SECRET_SHAPES:
                 for m in rx.finditer(t):
                     hits.append("%s:%d" % (walk.rel(repo, p), walk.line_of(t, m.start())))
             for m in KEY_LITERAL.finditer(t):
-                v = m.group(1)
-                if _entropy(v) >= 3.5 and not re.match(r"^(?:https?://|/|\.|[A-Z_]+$)", v):
+                name, v = m.group(1), m.group(2)
+                if _entropy(v) >= 3.5 and not re.match(r"^(?:https?://|/|\.|[A-Z_]+$)", v) and not _drive_id(name, v, t):
                     hits.append("%s:%d" % (walk.rel(repo, p), walk.line_of(t, m.start())))
         if hits:
             res.append(result("gas.keys-in-code", "No keys in Apps Script code", "FAIL", ledger.join_hits(sorted(set(hits)), 6, ", "), severity="high",
                               fix="store it with PropertiesService.getScriptProperties(), remove it from the file, rotate it"))
         else:
-            res.append(result("gas.keys-in-code", "No keys in Apps Script code", "PASS", "no key-shaped value or key literal in .gs/.html/.js"))
+            res.append(result("gas.keys-in-code", "No keys in Apps Script code", "PASS", "no key-shaped value or key literal in %s" % "/".join(SCAN_EXT)))
     return ledger.emit(res, cannot_see=["The deployed version's access setting can differ from appsscript.json until a new deployment is made (clasp deploy)",
                                         "Script Properties contents: Apps Script editor, Project Settings (names only)"])
 

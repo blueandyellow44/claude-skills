@@ -21,6 +21,14 @@ Two levels, both under Node itself, never vitest:
 No built output: UNKNOWN (build first; this check never builds).
 Bundled output with no bare imports (a Worker bundle) is a PASS with that
 noted: there is nothing left for Node to resolve.
+What counts as an import: comments and every string body are blanked first
+(same length, so positions hold), the import and require statements are found
+in that blanked text, and each specifier is read back from the comment-free
+original. A JSDoc example or a scaffolding template literal that contains an
+import line is text, not an import. Minified files are read too: a server
+bundle (esbuild --minify) is code Node runs; only a file that touches browser
+globals (window, document, navigator, webpack chunk loaders) and no Node-only
+API (process.env, __dirname, node: modules) is skipped as a browser bundle.
 """
 import argparse
 import json
@@ -36,9 +44,13 @@ import ledger  # noqa: E402
 import walk  # noqa: E402
 from ledger import result  # noqa: E402
 
-IMPORT_RX = re.compile(r"""(?:^|[;\s}])(?:import\s+(?:[\w*{}\s,$]+\s+from\s+)?|export\s+[\w*{}\s,$]*\s+from\s+|import\()\s*['"]([^'"]+)['"]""", re.M)
-REQUIRE_RX = re.compile(r"""\brequire\(\s*['"]([^'"]+)['"]\s*\)""")
+# Matched against text whose string bodies are blanked: the specifier is a run of spaces between
+# quotes here, read back from the comment-free original at the same span.
+IMPORT_RX = re.compile(r"""(?:^|[;\s}])(?:import\s+(?:[\w*{}\s,$]+\s+from\s+)?|export\s+[\w*{}\s,$]*\s+from\s+|import\()\s*(['"])([^'"]*)\1""", re.M)
+REQUIRE_RX = re.compile(r"""\brequire\(\s*(['"])([^'"]*)\1\s*\)""")
 BUILTIN_PREFIX = ("node:", "cloudflare:", "bun:", "data:", "http:", "https:", "virtual:")
+BROWSER_RX = re.compile(r"\b(?:window|document|navigator)\s*[.\[]|webpackChunk|webpackJsonp|__next_f|\bself\.")
+NODE_RX = re.compile(r"process\.(?:env|argv|exit|cwd|stdout|stderr|platform)\b|__dirname|__filename|['\"]node:[a-z_/]+['\"]")
 
 RESOLVER = r"""
 import {createRequire, builtinModules} from 'node:module';
@@ -58,6 +70,15 @@ process.stdout.write(JSON.stringify(out));
 """
 
 
+def browser_bundle(path):
+    """A minified file that reaches browser globals and no Node-only API is a browser bundle, not
+    code Node runs. A minified server bundle (`"use strict";var e=require("x")...`) is read."""
+    if not path.endswith(".min.js"):
+        return False
+    t = walk.read(path, 400_000)
+    return bool(BROWSER_RX.search(t)) and not NODE_RX.search(t)
+
+
 def built_files(repo, dirs):
     out = []
     for d in dirs:
@@ -68,9 +89,27 @@ def built_files(repo, dirs):
             # browser chunks (Next static output) are not code Node runs
             ds[:] = [x for x in ds if x not in ("node_modules", "static", "_next", "chunks", "assets", "client")]
             for n in names:
-                if n.endswith((".js", ".mjs", ".cjs")) and not n.endswith(".min.js"):
-                    out.append(os.path.join(r, n))
+                p = os.path.join(r, n)
+                if n.endswith((".js", ".mjs", ".cjs")) and not browser_bundle(p):
+                    out.append(p)
     return out[:3000]
+
+
+def imports_of(path):
+    """(spec, kind) for every bare import and require in a built file. Comments and string bodies are
+    blanked before matching (an import line quoted inside a template literal or a JSDoc example is text);
+    the specifier itself is read from the comment-free text at the same span, which strip_comments keeps
+    the same length as the original."""
+    raw = walk.read(path)
+    kept = walk.strip_comments(raw, path, strings=True)
+    blank = walk.strip_comments(raw, path, strings=False)
+    out = []
+    for rx, kind in ((IMPORT_RX, "import"), (REQUIRE_RX, "require")):
+        for m in rx.finditer(blank):
+            s = kept[m.start(2):m.end(2)]
+            if s and not s.startswith((".", "/")) and not s.startswith(BUILTIN_PREFIX):
+                out.append((s, kind))
+    return out
 
 
 def main():
@@ -92,15 +131,11 @@ def main():
     else:
         items = []
         for f in files:
-            t = walk.read(f)
-            for m in IMPORT_RX.finditer(t):
-                s = m.group(1)
-                if not s.startswith((".", "/")) and not s.startswith(BUILTIN_PREFIX):
-                    items.append({"file": f, "spec": s, "kind": "import"})
-            for m in REQUIRE_RX.finditer(t):
-                s = m.group(1)
-                if not s.startswith((".", "/")) and not s.startswith(BUILTIN_PREFIX):
-                    items.append({"file": f, "spec": s, "kind": "require"})
+            # Comments AND string bodies blanked before matching: bundles carry JSDoc examples such as
+            # "import { Hono } from 'hono'" (2026-10-15 false positive) and scaffolding CLIs carry whole
+            # source files inside template literals; neither is an import.
+            for s, kind in imports_of(f):
+                items.append({"file": f, "spec": s, "kind": kind})
         seen, uniq = set(), []
         for it in items:
             k = (os.path.dirname(it["file"]), it["spec"], it["kind"])

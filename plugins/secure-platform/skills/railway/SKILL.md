@@ -40,7 +40,7 @@ A repo with `railway.json` or `railway.toml`.
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: logging process.env whole and a dev-server start command FAIL, and cannot_see carries the count-only command. Known-good: logging a key count only and a built-server start command PASS.
+Known-bad: logging process.env whole and a dev-server start command FAIL, and cannot_see carries the count-only command. Known-good: logging a key count only and a built-server start command PASS. Phase 8 regressions: `console.log('prefix', process.env)`, `return dict(os.environ)`, `res.json({ env: process.env })`, `return {...process.env}` and `JSON.stringify(process.env, null, 2)` FAIL; `Object.keys(process.env)`, `len(os.environ)`, `'X' in os.environ`, `process.env.PORT`, a string that mentions process.env and a helper returning its own `env` object PASS; the start command npm start whose package.json start script is `next dev` FAILs naming the script, two script hops (yarn start, then npm run serve, then nodemon) FAIL, npm start resolving to next start PASSes; a railway.json under services/mcp/ is read.
 
 ## Rules
 

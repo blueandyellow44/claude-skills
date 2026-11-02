@@ -44,7 +44,7 @@ A dependency changes in a Node service (a feed-ingestion service, any server or 
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: a built file importing a subpath the package's exports map hides FAILs with ERR_PACKAGE_PATH_NOT_EXPORTED; a module that throws at import FAILs; no build output is UNKNOWN (exit 3). Known-good: the same package's exported entry resolves and imports.
+Known-bad: a built file importing a subpath the package's exports map hides FAILs with ERR_PACKAGE_PATH_NOT_EXPORTED; a module that throws at import FAILs; a minified server bundle (`dist/server.min.js`) requiring a package that is not installed FAILs; a real missing import next to a template literal still FAILs and names the real specifier; no build output is UNKNOWN (exit 3). Known-good: the same package's exported entry resolves and imports; import lines inside JSDoc comments, template literals and plain strings are text and never resolved; a minified browser bundle (window.document, no Node API) is skipped.
 
 ## Rules
 

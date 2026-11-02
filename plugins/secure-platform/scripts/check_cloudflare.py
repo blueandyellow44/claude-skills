@@ -5,15 +5,25 @@
 
   cf.headers.framing / .hsts / .nosniff / .referrer
       each security header set for every path: in a `/*` block of a committed
-      _headers file, by hono/secure-headers, or by code or next.config that sets
-      it. Found nowhere FAILs (framing medium; others low; HSTS notes the
-      HSTS-preloaded TLDs where plain http is never loaded).
+      _headers file, by hono/secure-headers (its options are read: an option
+      set to false switches that header off), or by code or next.config that
+      SETS it (a set/append/setHeader/header call, an object key, or a
+      next.config `key:`; the header's name in a string or a docs table is not
+      the header being sent). Found nowhere FAILs (framing medium; others low;
+      HSTS notes the HSTS-preloaded TLDs where plain http is never loaded).
   cf.vars-secrets
-      a secret-looking name with a value in wrangler.toml/jsonc [vars] FAILs
-      high: [vars] are plaintext and committed.
+      a secret-shaped name with a value in wrangler vars FAILs high: vars are
+      plaintext and committed. Read from wrangler.toml ([vars], [env.X.vars]
+      and the inline form `vars = { ... }`) and from wrangler.json/.jsonc
+      (comments and trailing commas allowed; a file that still does not parse
+      is UNKNOWN, never PASS). Names are judged by whole segments and suffix
+      forms (_KEY, API_KEY, SECRET, TOKEN, PASSWORD), so KEYBOARD_LAYOUT,
+      MAX_TOKENS and SESSION_TOKEN_TTL_SECONDS are config, and public-by-design
+      names (SITE_KEY, PUBLISHABLE, ANON_KEY) are allowed.
   cf.env-bindings
-      a [env.<name>] block that reuses the production D1/KV/R2 id FAILs medium:
-      the preview writes production data (found 2026-08-25).
+      an env.<name> block that reuses the production D1/KV/R2 id FAILs medium:
+      the preview writes production data (found 2026-08-25). Read from TOML
+      and from wrangler.json/.jsonc; a `preview_id` is not a production id.
 What it cannot see is printed under cannot_see (zone rules, Access, WAF,
 Pages project secrets, the pages.dev alias's exposure).
 """
@@ -27,6 +37,7 @@ import _corepath  # noqa: F401,E402
 import ledger  # noqa: E402
 import walk  # noqa: E402
 from ledger import result  # noqa: E402
+from names import secret_name  # noqa: E402  (one secret-name vocabulary for every adapter)
 
 # A header that is present but says nothing does not count (Phase 5 audit #9).
 VALUE_OK = {
@@ -48,7 +59,26 @@ HEADERS = {
     "nosniff": (re.compile(r"X-Content-Type-Options", re.I), "low", "X-Content-Type-Options: nosniff"),
     "referrer": (re.compile(r"Referrer-Policy", re.I), "low", "Referrer-Policy: strict-origin-when-cross-origin"),
 }
-SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSCODE|PRIVATE|CREDENTIAL|SALT|DSN", re.I)
+
+
+def _set_shape(header_name):
+    """Code that SETS a response header by name: a set/append/setHeader/header
+    call with the name as the first argument, an object key ('Name': value),
+    or a next.config `key: 'Name'`. The name alone in a string, a docs table
+    ({ name: 'X-Frame-Options', why: ... }) or a help page is not a header
+    being sent (bench 2026-11-01)."""
+    return re.compile(r"""(?:\.(?:set|append|setHeader|header)\s*\(\s*|\bkey\s*:\s*)['"`]%s['"`]|['"`]%s['"`]\s*:(?!:)""" % (header_name, header_name), re.I)
+
+
+SET_SHAPE = {
+    "framing": (_set_shape("X-Frame-Options"), _set_shape("Content-Security-Policy")),
+    "hsts": (_set_shape("Strict-Transport-Security"),),
+    "nosniff": (_set_shape("X-Content-Type-Options"),),
+    "referrer": (_set_shape("Referrer-Policy"),),
+}
+# hono/secure-headers option per header; `option: false` switches that header off.
+SECURE_HEADERS_OPT = {"framing": "xFrameOptions", "hsts": "strictTransportSecurity", "nosniff": "xContentTypeOptions", "referrer": "referrerPolicy"}
+
 PRELOADED = (".app", ".dev", ".page")
 
 
@@ -96,21 +126,113 @@ def toml_sections(t):
     return out
 
 
+TOML_PAIR = re.compile(r"""([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(['"])(.*?)\2""")
+
+
+def toml_vars(t):
+    """(label, name) for every string var in wrangler.toml: [vars], [env.X.vars],
+    and the inline-table form `vars = { A = "x", B = "y" }` at top level or in
+    an [env.X] block (bench 2026-11-01: the inline form was never read)."""
+    out = []
+    for sec, body in toml_sections(t):
+        if sec == "vars" or sec.endswith(".vars"):
+            for m in re.finditer(r"^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(['\"])(.*?)\2", body, re.M):
+                out.append(("[%s]" % sec, m.group(1)))
+        for m in re.finditer(r"^\s*vars\s*=\s*\{(.*?)\}\s*$", body, re.M | re.S):
+            label = "vars" if not sec else "[%s] vars" % sec
+            for p in TOML_PAIR.finditer(m.group(1)):
+                out.append((label, p.group(1)))
+    return out
+
+
+def jsonc_load(text):
+    """wrangler.json/.jsonc as a dict, or None when it does not parse. Comments
+    go through walk.strip_comments (string-aware, line-preserving: a `//.*$`
+    with re.S once blanked the whole file after its first comment), then
+    trailing commas, which JSONC allows, are dropped."""
+    s = walk.strip_comments(text, "wrangler.jsonc")
+    s = re.sub(r",(\s*[}\]])", r"\1", s)
+    try:
+        data = json.loads(s)
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _binding_ids(block):
+    """Production-style binding ids in one wrangler JSON block (top level or one env)."""
+    ids = set()
+    if not isinstance(block, dict):
+        return ids
+    for key, field in (("d1_databases", "database_id"), ("kv_namespaces", "id"), ("r2_buckets", "bucket_name")):
+        for b in block.get(key) or []:
+            if isinstance(b, dict) and isinstance(b.get(field), str):
+                ids.add(b[field])
+    return ids
+
+
+# `\b` so preview_id / preview_database_id / preview_bucket_name are not read as the production id.
+ID_RX = re.compile(r"\b(?:database_id|id|bucket_name)\s*=\s*['\"]([^'\"]+)")
+
+
+def secure_headers_calls(repo):
+    """[(relpath, line, options_text)] for every hono secureHeaders( call, with
+    the text inside its parentheses (empty for secureHeaders())."""
+    out = []
+    for p in walk.files(repo, tests=False):
+        t = walk.read_code(p)
+        for m in re.finditer(r"secureHeaders\s*\(", t):
+            depth, i, j = 0, m.end() - 1, m.end() - 1
+            while j < len(t):
+                if t[j] == "(":
+                    depth += 1
+                elif t[j] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            out.append((walk.rel(repo, p), walk.line_of(t, m.start()), t[i + 1:j]))
+    return out
+
+
+def secure_headers_sends(name, opts):
+    """Does this secureHeaders(opts) call send the header? Defaults on; an
+    option set to false switches it off; a string value must protect; framing
+    also counts a CSP frameAncestors directive."""
+    opt = SECURE_HEADERS_OPT[name]
+    m = re.search(r"\b%s\s*:\s*(false|['\"`]([^'\"`]*)['\"`])" % opt, opts)
+    if m is None:
+        on = True
+    elif m.group(1) == "false":
+        on = False
+    else:
+        on = VALUE_OK[name](m.group(2))
+    if name == "framing" and not on:
+        on = bool(re.search(r"\bframeAncestors\s*:", opts))
+    return on
+
+
 def main():
     repo = os.path.abspath(sys.argv[1])
     res = []
     hfiles = headers_files(repo)
     covered_text = "\n".join(all_paths_block(walk.read(p)) for p in hfiles)
     code_hits = {}
-    secure_headers = list(walk.find(repo, r"secureHeaders\(", tests=False))
-    for name, (rx, _, _) in HEADERS.items():
-        for r, ln, _ in walk.find(repo, rx, exts=walk.CODE_EXT + (".mjs", ".cjs"), tests=False):
+    for name in HEADERS:
+        for r, ln, m in walk.find(repo, SET_SHAPE[name][0], exts=walk.CODE_EXT + (".mjs", ".cjs"), tests=False):
             code_hits.setdefault(name, "%s:%d" % (r, ln))
+    # A CSP set in code protects framing only when it carries frame-ancestors (read in the same file).
+    for r, ln, m in walk.find(repo, SET_SHAPE["framing"][1], exts=walk.CODE_EXT + (".mjs", ".cjs"), tests=False):
+        if "frame-ancestors" in walk.read_code(os.path.join(repo, r)):
+            code_hits.setdefault("framing", "%s:%d" % (r, ln))
     for f in ("next.config.js", "next.config.mjs", "next.config.ts"):
-        t = walk.read(os.path.join(repo, f))
-        for name, (rx, _, _) in HEADERS.items():
-            if rx.search(t) and "output: 'export'" not in t and 'output: "export"' not in t:
+        t = walk.read_code(os.path.join(repo, f))
+        if "output: 'export'" in t or 'output: "export"' in t:
+            continue
+        for name in HEADERS:
+            if SET_SHAPE[name][0].search(t) or (name == "framing" and SET_SHAPE[name][1].search(t) and "frame-ancestors" in t):
                 code_hits.setdefault(name, f)
+    sh_calls = secure_headers_calls(repo)
     _, wt = wrangler(repo)
     # Cloudflare Pages adds nosniff and Referrer-Policy to static assets by
     # default: measured 2026-10-08 on a production *.pages.dev project (no zone, so no
@@ -135,13 +257,14 @@ def main():
         cid = "cf.headers." + name
         title = "%s header on every path" % {"framing": "Framing (frame-ancestors)", "hsts": "HSTS", "nosniff": "nosniff", "referrer": "Referrer-Policy"}[name]
         vals = [m.group(1) for m in HEADER_LINE[name].finditer(covered_text)]
+        sh_on = [c for c in sh_calls if secure_headers_sends(name, c[2])]
         if vals and not any(VALUE_OK[name](v) for v in vals):
             res.append(result(cid, title, "FAIL", "_headers /* block sets it to a value that does not protect (%s)" % vals[0][:60], severity=sev, fix=fix))
         elif vals:
             src = [walk.rel(repo, p) for p in hfiles if rx.search(all_paths_block(walk.read(p)))]
             res.append(result(cid, title, "PASS", "%s (/* block)" % ledger.join_hits(src, 3, ", ")))
-        elif secure_headers:
-            res.append(result(cid, title, "PASS", "hono secureHeaders() at %s:%d (sets it by default)" % secure_headers[0][:2]))
+        elif sh_on:
+            res.append(result(cid, title, "PASS", "hono secureHeaders() at %s:%d (sets it by default)" % sh_on[0][:2]))
         elif pages and name in ("nosniff", "referrer"):
             res.append(result(cid, title, "PASS", "Cloudflare Pages default on static assets (pages_build_output_dir set)",
                               detail="measured on a pages.dev alias 2026-10-08; Pages Functions responses do not get it, set it there in code"))
@@ -149,47 +272,63 @@ def main():
             res.append(result(cid, title, "PASS", "set in code at %s" % code_hits[name], detail="set in code: confirm it applies to every response, including static assets"))
         else:
             where = ", ".join(walk.rel(repo, p) for p in hfiles) if hfiles else "no _headers file"
+            if sh_calls and not sh_on:
+                where += "; secureHeaders() at %s:%d switches it off (%s: false)" % (sh_calls[0][0], sh_calls[0][1], SECURE_HEADERS_OPT[name])
             res.append(result(cid, title, "FAIL", "%s; not set in code" % where, severity=sev, fix=fix,
                               detail="HSTS-preloaded TLD: browsers never load it over http, HSTS adds little" if name == "hsts" and preloaded else None))
     wf, wt = wrangler(repo)
     if wf:
-        bad = []
-        for sec, body in toml_sections(wt) if wf.endswith(".toml") else []:
-            if sec == "vars" or sec.endswith(".vars"):
-                for m in re.finditer(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['\"])(.+?)\2", body, re.M):
-                    if SECRETISH.search(m.group(1)) and not re.search(r"PUBLIC|PUBLISHABLE|SITE_KEY", m.group(1), re.I):
-                        bad.append("%s [%s] %s" % (wf, sec, m.group(1)))
-        if wf.endswith((".jsonc", ".json")):
-            try:
-                data = json.loads(re.sub(r"(?m)^\s*//.*$|/\*.*?\*/", "", wt, flags=re.S))
-                for k, v in (data.get("vars") or {}).items():
-                    if SECRETISH.search(k) and v and not re.search(r"PUBLIC|PUBLISHABLE|SITE_KEY", k, re.I):
-                        bad.append("%s vars %s" % (wf, k))
-            except ValueError:
-                pass
-        if bad:
+        bad, data, unparsed = [], None, False
+        if wf.endswith(".toml"):
+            for label, name in toml_vars(wt):
+                if secret_name(name):
+                    bad.append("%s %s %s" % (wf, label, name))
+        else:
+            data = jsonc_load(wt)
+            if data is None:
+                unparsed = True
+            else:
+                blocks = [("vars", data.get("vars"))]
+                for env_name, env in (data.get("env") or {}).items() if isinstance(data.get("env"), dict) else []:
+                    if isinstance(env, dict):
+                        blocks.append(("env.%s vars" % env_name, env.get("vars")))
+                for label, vars_ in blocks:
+                    for k, v in (vars_ or {}).items() if isinstance(vars_, dict) else []:
+                        if v and secret_name(k):
+                            bad.append("%s %s %s" % (wf, label, k))
+        if unparsed:
+            res.append(result("cf.vars-secrets", "No secrets in wrangler [vars]", "UNKNOWN", "%s did not parse as JSONC" % wf,
+                              reason="%s did not parse (after comments and trailing commas were removed); its vars could not be read" % wf,
+                              fix="run `npx wrangler deploy --dry-run` to find the syntax error, then re-run"))
+        elif bad:
             res.append(result("cf.vars-secrets", "No secrets in wrangler [vars]", "FAIL", ledger.join_hits(bad, 6, "; "), severity="high",
                               fix="move each to `wrangler secret put` / `wrangler pages secret put`, delete it from [vars], rotate it (it is in git history)"))
         else:
-            res.append(result("cf.vars-secrets", "No secrets in wrangler [vars]", "PASS", "%s: no secret-looking name in vars" % wf))
+            res.append(result("cf.vars-secrets", "No secrets in wrangler [vars]", "PASS", "%s: no secret-shaped name in vars" % wf))
+        # env bindings: production ids vs each env's ids, TOML or JSON alike
+        envs, prod_ids = [], set()
         if wf.endswith(".toml"):
             secs = toml_sections(wt)
-            prod_ids = set()
             for sec, body in secs:
                 if not sec.startswith("env."):
-                    prod_ids |= set(re.findall(r"(?:database_id|id|bucket_name)\s*=\s*['\"]([^'\"]+)", body))
-            shared = []
+                    prod_ids |= set(ID_RX.findall(body))
             for sec, body in secs:
                 if sec.startswith("env."):
-                    for i in re.findall(r"(?:database_id|id|bucket_name)\s*=\s*['\"]([^'\"]+)", body):
-                        if i in prod_ids:
-                            shared.append("%s [%s] reuses a production binding id" % (wf, sec))
-            if any(s.startswith("env.") for s, _ in secs):
-                if shared:
-                    res.append(result("cf.env-bindings", "Non-production environments use their own data", "FAIL", ledger.join_hits(sorted(set(shared)), 4, "; "), severity="medium",
-                                      fix="give the preview its own D1/KV/R2 (or document the ruling that it shares production) before it runs writes"))
-                else:
-                    res.append(result("cf.env-bindings", "Non-production environments use their own data", "PASS", "%s: [env.*] binding ids differ from production" % wf))
+                    envs.append((sec, set(ID_RX.findall(body))))
+        elif data is not None:
+            prod_ids = _binding_ids(data)
+            for env_name, env in (data.get("env") or {}).items() if isinstance(data.get("env"), dict) else []:
+                envs.append(("env.%s" % env_name, _binding_ids(env)))
+        if unparsed and '"env"' in wt:
+            res.append(result("cf.env-bindings", "Non-production environments use their own data", "UNKNOWN", "%s did not parse as JSONC" % wf,
+                              reason="%s did not parse; its env blocks could not be compared with production" % wf))
+        elif envs:
+            shared = sorted({"%s [%s] reuses a production binding id" % (wf, sec) for sec, ids in envs if ids & prod_ids})
+            if shared:
+                res.append(result("cf.env-bindings", "Non-production environments use their own data", "FAIL", ledger.join_hits(shared, 4, "; "), severity="medium",
+                                  fix="give the preview its own D1/KV/R2 (or document the ruling that it shares production) before it runs writes"))
+            else:
+                res.append(result("cf.env-bindings", "Non-production environments use their own data", "PASS", "%s: env.* binding ids differ from production" % wf))
     cannot = [
         "Cloudflare zone rules (rate limiting, WAF, Always Use HTTPS, zone HSTS): dashboard or a zone-write API token; the connector and wrangler were zone-read-only on 2026-10-07",
         "Cloudflare Access policies in front of any path: Zero Trust dashboard",

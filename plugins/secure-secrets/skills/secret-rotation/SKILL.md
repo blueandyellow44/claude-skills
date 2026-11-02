@@ -57,7 +57,7 @@ The homes list with each updated, the shape check, the verify status before and 
 
 `bash <base>/../../tests/run_tests.sh`
 
-The shape check FAILs a `NAME=NAME=` value, a provider-prefix mismatch, an unbalanced quote, a placeholder and trailing whitespace, and PASSes a well-formed file, never printing a value; `store_secret.py` refuses a `NAME=` value and stores a good one at 0600; `verify_secret.py` exits 1 on a refused key, 0 on a good one, 3 on an unset name, and refuses to send a key to a foreign host.
+The shape check FAILs a `NAME=NAME=` value, a provider-prefix mismatch (including an `sk-ant-` key under `OPENAI_API_KEY`, a `pk_live_` key under `STRIPE_SECRET_KEY` and a secret key under `STRIPE_WEBHOOK_SECRET`), a provider prefix followed by a template's x's (`ghp_xxxx`), an unbalanced quote, a placeholder word under a secret-looking name (`API_KEY=test`) and trailing whitespace; it PASSes a well-formed file, a `whsec_` webhook secret (the most specific provider rule wins, not the first), a base64 value ending in `=` padding and a setting like `APP_ENV=test`, never printing a value (2026-11-01, Phase 8); `store_secret.py` refuses a `NAME=` value and stores a good one at 0600; `verify_secret.py` exits 1 on a refused key, 0 on a good one, 3 on an unset name, and refuses to send a key to a foreign host.
 
 ## Rules
 

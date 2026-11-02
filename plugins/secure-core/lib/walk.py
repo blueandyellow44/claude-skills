@@ -84,11 +84,12 @@ def line_of(text, index):
     return text.count("\n", 0, index) + 1
 
 
-def find(repo, pattern, exts=CODE_EXT, tests=True, flags=0, served=False):
-    """Yield (relpath, line, match) for every regex match in the repo's source."""
+def find(repo, pattern, exts=CODE_EXT, tests=True, flags=0, served=False, strings=True):
+    """Yield (relpath, line, match) for every regex match in the repo's source.
+    strings=False blanks string contents first (see read_code)."""
     rx = re.compile(pattern, flags) if isinstance(pattern, str) else pattern
     for p in files(repo, exts, tests, served=served):
-        t = read_code(p)
+        t = read_code(p, strings)
         for m in rx.finditer(t):
             yield rel(repo, p), line_of(t, m.start()), m
 
@@ -231,3 +232,76 @@ def read_code(path, strings=True):
     if path.endswith(CODE_EXT):
         return strip_comments(t, path, strings)
     return t
+
+
+# ---- brace-balanced blocks and declarations (Phase 9, 2026-11-01: one home) ----
+# Merged from check_spend._block / _function_body (6000-character cap), check_auth_gates._bal_block /
+# _enclosing_block (4000-character cap) and the brace loop in check_metering._functions (no cap). The one
+# disagreement, the cap on an unbalanced block, is resolved to the larger 6000: a block the file cuts short is
+# read further, never shorter, and every unit assertion and bench case gives the same result either way.
+BLOCK_LIMIT = 6000
+
+
+def block_end(text, open_idx, limit=None):
+    """Index just past the `}` that balances the `{` at open_idx, or None when the braces never balance
+    (within `limit` characters when given). Strings and comments are the caller's business: pass the
+    strings-blanked view (read_code(strings=False)) when a brace inside a template literal would mislead."""
+    depth = 0
+    stop = len(text) if limit is None else min(len(text), open_idx + limit)
+    for j in range(open_idx, stop):
+        ch = text[j]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+    return None
+
+
+def block(text, start, limit=BLOCK_LIMIT):
+    """Text of the `{...}` block that opens at or after `start`, braces balanced; the next `limit`
+    characters when they never balance; '' when no brace follows."""
+    i = text.find("{", start)
+    if i < 0:
+        return ""
+    end = block_end(text, i, limit)
+    return text[i:end] if end is not None else text[i:i + limit]
+
+
+def enclosing_block(code, text, pos):
+    """Text (strings kept) of the innermost `{...}` block containing pos, found by brace balance on the
+    strings-blanked view `code`; the whole file when pos is at top level."""
+    depth = 0
+    for j in range(pos - 1, -1, -1):
+        ch = code[j]
+        if ch == "}":
+            depth += 1
+        elif ch == "{":
+            if depth == 0:
+                return block(text, j)
+            depth -= 1
+    return text
+
+
+def function_decl(text, name):
+    """The match of `function name(` or `const|let|var name =` in text, or None."""
+    return re.search(r"(?:function\s+%s\s*\(|(?:const|let|var)\s+%s\s*=)" % (re.escape(name), re.escape(name)), text)
+
+
+def function_body(text, name):
+    """The `{...}` body of `function name(` / `const name = (...) =>` in text, or ''."""
+    m = function_decl(text, name)
+    return block(text, m.end()) if m else ""
+
+
+def decl_src(name, *scopes):
+    """The right-hand side that binds `name`, in the first scope that has one: `const name = ...`,
+    a destructuring `const { name, other } = ...`, or a Python / bare assignment `name = ...`. '' when none."""
+    for sc in scopes:
+        m = re.search(r"(?:const|let|var)\s+%s\s*(?::[^=\n]{0,80})?=\s*([^\n;]{1,240})" % re.escape(name), sc) or \
+            re.search(r"(?:const|let|var)\s*\{[^}]*\b%s\b[^}]*\}\s*=\s*([^\n;]{1,240})" % re.escape(name), sc) or \
+            re.search(r"(?m)^[ \t]*%s\s*=(?!=)\s*([^\n;]{1,240})" % re.escape(name), sc)
+        if m:
+            return m.group(1)
+    return ""

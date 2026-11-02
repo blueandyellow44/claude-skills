@@ -60,14 +60,15 @@ def detect_stack(repo):
         stack.add("nextjs")
     if "@opennextjs/cloudflare" in deps:
         stack.add("opennext")
-    if "@supabase/supabase-js" in deps or os.path.isdir(os.path.join(repo, "supabase")):
+    if "@supabase/supabase-js" in deps or os.path.isdir(os.path.join(repo, "supabase")) or _nested_supabase(repo) or _python_supabase(repo):
         stack.add("supabase")
     cf_files = walk.exists_any(repo, "wrangler.toml", "wrangler.jsonc", "wrangler.json", "_headers", "public/_headers", "functions")
     if cf_files or "wrangler" in deps:
         stack.add("cloudflare")
-    if walk.exists_any(repo, "fly.toml"):
+    # A monorepo keeps one fly.toml or railway config per service folder: any depth, not only the root.
+    if walk.exists_any(repo, "fly.toml") or any(walk.files(repo, exts=("fly.toml",), tests=False)):
         stack.add("fly")
-    if walk.exists_any(repo, "railway.json", "railway.toml"):
+    if walk.exists_any(repo, "railway.json", "railway.toml") or any(walk.files(repo, exts=("railway.json", "railway.toml"), tests=False)):
         stack.add("railway")
     if walk.exists_any(repo, "appsscript.json", ".clasp.json") or list(walk.files(repo, exts=("appsscript.json",))):
         stack.add("google-apps-script")
@@ -76,6 +77,30 @@ def detect_stack(repo):
     if os.path.isdir(os.path.join(repo, ".github", "workflows")):
         stack.add("github-actions")
     return sorted(stack), deps
+
+
+def _nested_supabase(repo, depth=2):
+    """A supabase/ project folder (config.toml, migrations/ or functions/) up to `depth` levels down."""
+    base = os.path.abspath(repo)
+    for root, dirs, names in os.walk(base):
+        rel = os.path.relpath(root, base)
+        level = 0 if rel == "." else rel.count(os.sep) + 1  # the folder that CONTAINS supabase/
+        dirs[:] = [d for d in dirs if d not in walk.SKIP_DIRS and not d.startswith(".")]
+        if "supabase" in dirs and level >= 1:
+            sd = os.path.join(root, "supabase")
+            if os.path.isfile(os.path.join(sd, "config.toml")) or any(os.path.isdir(os.path.join(sd, m)) for m in ("migrations", "functions")):
+                return True
+        if level >= depth:
+            dirs[:] = []
+    return False
+
+
+def _python_supabase(repo):
+    """The Python client: supabase in a requirements/pyproject manifest, or imported in code."""
+    for p in walk.files(repo, exts=("requirements.txt", "pyproject.toml", "Pipfile"), tests=False):
+        if re.search(r"""^\s*["']?supabase(?:-py)?\b""", walk.read(p), re.M | re.I):
+            return True
+    return any(walk.find(repo, r"^\s*(?:from\s+supabase(?:\.\w+)*\s+import|import\s+supabase\b)", exts=(".py",), tests=False, flags=re.M))
 
 
 def _node_start_script(repo):
@@ -224,7 +249,7 @@ def auth_mechanism(repo, deps):
 
 def markdown(inv):
     L = ["# Attack surface: %s" % os.path.basename(inv["repo"]), "",
-         "Stack: %s" % (", ".join(inv["stack"]) or "nothing recognised"),
+         "Stack: %s" % (", ".join(inv["stack"]) or "nothing recognized"),
          "Auth: %s" % ("; ".join(inv["auth_mechanism"]) or "no sign-in mechanism found"),
          "Routes: %d (%d with no auth reference near the handler: look at those first)" % (inv["route_count"], inv["routes_without_auth_reference"]),
          "Outbound fetch sites: %d (%d with a variable URL)" % (len(inv["outbound_fetches"]), sum(1 for f in inv["outbound_fetches"] if f["kind"] == "variable")),

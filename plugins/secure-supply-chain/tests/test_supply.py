@@ -106,6 +106,9 @@ T.status_is("built good", c, "built.import.dist_server.js", "PASS", out)
 broken_entry = pkgtree("import x from 'fakepkg';\nthrow new TypeError('boom at import');\n")
 rc, c, out = T.run(os.path.join(S, "load_built.py"), broken_entry, "--entry", "dist/server.js")
 T.status_is("built entry throws", c, "built.import.dist_server.js", "FAIL", out)
+commented = pkgtree("/**\n * @example\n * import { Hono } from 'hono'\n * import { fire } from 'hono/service-worker'\n */\n// import x from 'missing-pkg'\nimport x from 'fakepkg';\nexport const y = x;\n")
+rc, c, out = T.run(os.path.join(S, "load_built.py"), commented)
+T.status_is("2026-10-15: imports inside comments are not imports", c, "built.resolve", "PASS", out)
 none = T.tree({"package.json": "{}", "src/index.ts": "export {}"})
 rc, c, out = T.run(os.path.join(S, "load_built.py"), none)
 T.status_is("no build", c, "built.resolve", "UNKNOWN", out)
@@ -152,5 +155,124 @@ lockd = T.tree({".github/workflows/d.yml": "jobs:\n  d:\n    steps:\n      - run
                 "package-lock.json": json.dumps({"packages": {"node_modules/wrangler": {"version": "4.148.0"}}})})
 rc, c, out = T.run(os.path.join(S, "check_pinning.py"), lockd)
 T.expect("a caret range locked by package-lock.json PASSes and names the locked version", c.get("tooling.wrangler", {}).get("status") == "PASS" and "4.148.0" in c["tooling.wrangler"]["evidence"], out[-200:])
+
+# ---------- Phase 8 (bench known misses turned into fixes) ----------
+# check_deps: a parent flagged only through a child inherits the child's triage (bench parent-of-triaged-transitive-decoy)
+def child_report(triaged):
+    rep = {"vulnerabilities": {
+        "postcss": {"severity": "high", "fixAvailable": True, "via": [{"source": 2001, "url": "https://github.com/advisories/GHSA-p0st-cssl-1ne0"}]},
+        "next": {"severity": "high", "fixAvailable": True, "via": ["postcss"]}}}
+    files = {"package.json": "{}", "package-lock.json": "{}", "audit.json": json.dumps(rep)}
+    if triaged is not None:
+        files["security/advisory-triage.json"] = json.dumps({"advisories": [
+            {"package": "postcss", "advisory": "GHSA-p0st-cssl-1ne0", "reachable": triaged, "reason": "build-time only, own CSS", "reviewed": "2026-10-30"}]})
+    return T.tree(files)
+par = child_report(False)
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), par, "--audit-json", os.path.join(par, "audit.json"))
+T.status_is("phase 8: child triaged unreachable credits the parent", c, "deps.audit.root.next", "PASS", out)
+T.expect("phase 8: the parent's PASS names the child it was flagged through", "through postcss" in c.get("deps.audit.root.next", {}).get("detail", ""))
+par = child_report(None)
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), par, "--audit-json", os.path.join(par, "audit.json"))
+T.status_is("phase 8: an untriaged child keeps the parent FAIL", c, "deps.audit.root.next", "FAIL", out)
+T.expect("phase 8: the parent's FAIL names the child's advisory", "GHSA-p0st-cssl-1ne0 (via postcss)" in c.get("deps.audit.root.next", {}).get("detail", ""))
+par = child_report(True)
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), par, "--audit-json", os.path.join(par, "audit.json"))
+T.status_is("phase 8: a child triaged REACHABLE keeps the parent FAIL", c, "deps.audit.root.next", "FAIL", out)
+
+# check_deps: yarn classic NDJSON (bench yarn-classic-ndjson)
+YARN_LINES = [
+    {"type": "auditAdvisory", "data": {"resolution": {"id": 4001, "path": "minimist", "dev": False},
+                                       "advisory": {"id": 4001, "module_name": "minimist", "severity": "high", "url": "https://github.com/advisories/GHSA-m1n1-m1st-0001", "patched_versions": ">=1.2.6"}}},
+    {"type": "auditAdvisory", "data": {"resolution": {"id": 4002, "path": "vitest>esbuild", "dev": True},
+                                       "advisory": {"id": 4002, "module_name": "esbuild", "severity": "high", "url": "https://github.com/advisories/GHSA-esbu-1ld0-0002", "patched_versions": ">=0.25.0"}}},
+    {"type": "auditSummary", "data": {"vulnerabilities": {"info": 0, "low": 0, "moderate": 0, "high": 2, "critical": 0}, "dependencies": 14}},
+]
+yl = T.tree({"package.json": "{}", "yarn.lock": "# yarn lockfile v1\n", "audit.json": "\n".join(json.dumps(x) for x in YARN_LINES) + "\n"})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), yl, "--audit-json", os.path.join(yl, "audit.json"))
+T.status_is("phase 8: yarn v1 NDJSON advisory surfaces", c, "deps.audit.root.minimist", "FAIL", out)
+T.expect("phase 8: a dev-only yarn resolution is not a production advisory", "deps.audit.root.esbuild" not in c, str(sorted(c)))
+yl_clean = T.tree({"package.json": "{}", "yarn.lock": "# yarn lockfile v1\n", "audit.json": json.dumps(YARN_LINES[2]) + "\n"})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), yl_clean, "--audit-json", os.path.join(yl_clean, "audit.json"))
+T.status_is("phase 8: yarn NDJSON with only a summary is a clean audit", c, "deps.audit.root.moderate", "PASS", out)
+yl_bad = T.tree({"package.json": "{}", "yarn.lock": "# yarn lockfile v1\n", "audit.json": "warning Skipping preferred cache folder\nerror An unexpected error occurred\n"})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), yl_bad, "--audit-json", os.path.join(yl_bad, "audit.json"))
+T.status_is("phase 8: non-JSON audit output stays UNKNOWN", c, "deps.audit.root", "UNKNOWN", out)
+yl_err = T.tree({"package.json": "{}", "yarn.lock": "# yarn lockfile v1\n", "audit.json": json.dumps({"type": "error", "data": "Received malformed response from registry"}) + "\n"})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), yl_err, "--audit-json", os.path.join(yl_err, "audit.json"))
+T.status_is("phase 8: a yarn error line with no summary is UNKNOWN, never clean", c, "deps.audit.root", "UNKNOWN", out)
+
+# check_deps: workspace members are locked by the root lockfile (bench workspace-member-decoy); a non-member is not
+ws = T.tree({"package.json": json.dumps({"name": "mono", "private": True, "workspaces": ["apps/*"]}), "package-lock.json": "{}",
+             "apps/web/package.json": json.dumps({"name": "web"}), "tools/seed/package.json": json.dumps({"name": "seed"}),
+             "audit.json": json.dumps({"vulnerabilities": {}})})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), ws, "--audit-json", os.path.join(ws, "audit.json"))
+T.status_is("phase 8: npm workspace member locked by the root", c, "deps.lockfile.apps_web", "PASS", out)
+T.expect("phase 8: the member's PASS names the root lockfile", "package-lock.json locks workspace member apps/web" in c.get("deps.lockfile.apps_web", {}).get("evidence", ""))
+T.status_is("phase 8: a package folder outside the workspace globs still FAILs", c, "deps.lockfile.tools_seed", "FAIL", out)
+T.expect("phase 8: the member's audit is the root's (no deps.audit.apps_web row)", "deps.audit.apps_web" not in c, str(sorted(c)))
+pw = T.tree({"package.json": json.dumps({"name": "mono"}), "pnpm-lock.yaml": "lockfileVersion: '9.0'\n", "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - '!packages/legacy'\n",
+             "packages/ui/package.json": json.dumps({"name": "ui"}), "packages/ui/sub/package.json": json.dumps({"name": "ui-sub"}),
+             "audit.json": json.dumps({"actions": [], "advisories": {}, "metadata": {}})})
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), pw, "--audit-json", os.path.join(pw, "audit.json"))
+T.status_is("phase 8: pnpm-workspace.yaml member locked by the root", c, "deps.lockfile.packages_ui", "PASS", out)
+T.status_is("phase 8: `*` stays inside one path segment: a nested folder is not a member", c, "deps.lockfile.packages_ui_sub", "FAIL", out)
+
+# check_deps: a git-ignored lockfile is not committed (bench deps.lockfile.gitignored)
+gi = T.git_init(T.tree({"package.json": "{}", "package-lock.json": "{}", ".gitignore": "package-lock.json\n", "audit.json": json.dumps({"vulnerabilities": {}})}))
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), gi, "--audit-json", os.path.join(gi, "audit.json"))
+T.status_is("phase 8: a lockfile on disk but git-ignored FAILs", c, "deps.lockfile.root", "FAIL", out)
+T.expect("phase 8: the FAIL says why", "git-ignored" in c.get("deps.lockfile.root", {}).get("evidence", ""))
+gt = T.git_init(T.tree({"package.json": "{}", "package-lock.json": "{}", ".gitignore": "node_modules/\n", "audit.json": json.dumps({"vulnerabilities": {}})}))
+rc, c, out = T.run(os.path.join(S, "check_deps.py"), gt, "--audit-json", os.path.join(gt, "audit.json"))
+T.status_is("phase 8: a tracked lockfile PASSes", c, "deps.lockfile.root", "PASS", out)
+
+# check_pinning: flow-style steps, commented-out steps, secret-context spellings, runners, name-first steps
+flow = T.tree({".github/workflows/lint.yml": "on: [pull_request]\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - { uses: actions/checkout@%s }\n      - { name: markdown lint, uses: some-org/markdownlint-action@v1 }\n      - { name: spell, uses: other-org/typos-action@master, with: { config: .typos.toml } }\n" % SHA1})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), flow)
+T.status_is("phase 8: a flow-style `- { uses: x@v1 }` step on a tag FAILs", c, "actions.pinned", "FAIL", out)
+T.expect("phase 8: both flow-style tags are named, the SHA one is not", "markdownlint-action@v1" in c["actions.pinned"]["evidence"] and "typos-action@master" in c["actions.pinned"]["evidence"] and "2 unpinned" in c["actions.pinned"]["detail"], out[-300:])
+cmt = T.tree({".github/workflows/ci.yml": "on: [push]\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@%s # v4.2.2\n      # - uses: some-org/old-action@v2   (removed)\n      # - { uses: other-org/thing@v1 }\n      - run: echo ok\n" % SHA1})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), cmt)
+T.status_is("phase 8: a commented-out step is not a step", c, "actions.pinned", "PASS", out)
+for label, expr in (("no spaces", "${{secrets.NPM_TOKEN}}"), ("toJSON(secrets)", "${{ toJSON(secrets) }}"), ("index access", "${{ secrets['NPM_TOKEN'] }}")):
+    sc = T.tree({".github/workflows/p.yml": "on: [push]\nenv:\n  TOKEN: %s\njobs:\n  p:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm publish\n" % expr})
+    rc, c, out = T.run(os.path.join(S, "check_pinning.py"), sc)
+    T.status_is("phase 8: workflow env with %s FAILs" % label, c, "actions.secret-scope", "FAIL", out)
+notsec = T.tree({".github/workflows/p.yml": "on: [push]\nenv:\n  URL: ${{ vars.SECRETS_URL }}\n  MODE: ${{ inputs.secrets }}\n  # TOKEN: ${{ secrets.NPM_TOKEN }}\njobs:\n  p:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm publish\n        env:\n          TOKEN: ${{secrets.NPM_TOKEN}}\n"})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), notsec)
+T.status_is("phase 8: vars.SECRETS_URL, inputs.secrets, a commented secret and a step-scoped one are not broad", c, "actions.secret-scope", "PASS", out)
+for runner in ("pnpm dlx wrangler deploy", "bunx wrangler deploy", "bun x wrangler deploy", "yarn dlx wrangler deploy", "pnpx wrangler deploy", "bunx wrangler@latest deploy"):
+    rn = T.tree({".github/workflows/d.yml": "on: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n    steps:\n      - run: %s\n" % runner, "package.json": json.dumps({"name": "edge"})})
+    rc, c, out = T.run(os.path.join(S, "check_pinning.py"), rn)
+    T.status_is("phase 8: `%s` with nothing pinned FAILs" % runner, c, "tooling.wrangler", "FAIL", out)
+rn = T.tree({".github/workflows/d.yml": "on: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pnpm dlx wrangler@4.148.0 deploy\n", "package.json": json.dumps({"name": "edge"})})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), rn)
+T.status_is("phase 8: `pnpm dlx wrangler@<exact>` PASSes", c, "tooling.wrangler", "PASS", out)
+nf = T.tree({".github/workflows/d.yml": "on: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@%s\n      - name: Deploy worker\n        uses: cloudflare/wrangler-action@%s # v3.13.0\n        with:\n          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}\n          wranglerVersion: \"4.148.0\"\n" % (SHA1, SHA1)})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), nf)
+T.status_is("phase 8: wrangler-action with `name:` first and wranglerVersion PASSes", c, "tooling.wrangler", "PASS", out)
+nf_bad = T.tree({".github/workflows/d.yml": "on: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Deploy worker\n        uses: cloudflare/wrangler-action@%s # v3.13.0\n        with:\n          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}\n      - name: Next step\n        uses: actions/checkout@%s\n        with:\n          wranglerVersion: \"4.148.0\"\n" % (SHA1, SHA1)})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), nf_bad)
+T.status_is("phase 8: wranglerVersion in the NEXT step does not count for the action step", c, "tooling.wrangler", "FAIL", out)
+nf_flow = T.tree({".github/workflows/d.yml": "on: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n    steps:\n      - { name: deploy, uses: cloudflare/wrangler-action@%s, with: { wranglerVersion: '4.148.0' } }\n" % SHA1})
+rc, c, out = T.run(os.path.join(S, "check_pinning.py"), nf_flow)
+T.status_is("phase 8: a flow-style wrangler-action step with wranglerVersion PASSes", c, "tooling.wrangler", "PASS", out)
+
+# load_built: minified server bundles are read, browser bundles are not; template literals are text
+minsrv = T.tree({"package.json": json.dumps({"name": "svc"}), "dist/server.min.js": "\"use strict\";var e=require(\"fastify-lite\");e().listen({port:3000});\n"})
+rc, c, out = T.run(os.path.join(S, "load_built.py"), minsrv)
+T.status_is("phase 8: a minified server bundle requiring a missing package FAILs", c, "built.resolve", "FAIL", out)
+minweb = T.tree({"package.json": json.dumps({"name": "site"}), "dist/widget.min.js": "!function(){var e=window.document,t=require(\"react\");e.body.append(t.createElement(\"div\"))}();\n",
+                 "dist/server.js": "module.exports = { ok: true }\n"})
+rc, c, out = T.run(os.path.join(S, "load_built.py"), minweb)
+T.status_is("phase 8: a minified browser bundle (window.document, no Node API) is skipped", c, "built.resolve", "PASS", out)
+tmpl = pkgtree("import x from 'fakepkg';\nexport function scaffold() {\n  const src = `\nimport { Hono } from 'hono'\nconst app = new Hono()\nexport default app\n`;\n  const alt = \"import y from 'left-pad'\";\n  return src + alt + x;\n}\n")
+rc, c, out = T.run(os.path.join(S, "load_built.py"), tmpl)
+T.status_is("phase 8: import lines inside a template literal or a string are text, not imports", c, "built.resolve", "PASS", out)
+T.expect("phase 8: the real import was still counted", "1 imports" in c.get("built.resolve", {}).get("evidence", ""), c.get("built.resolve", {}).get("evidence", ""))
+tmpl_bad = pkgtree("import x from 'fakepkg';\nconst src = `import { Hono } from 'hono'`;\nimport { z } from 'zod-missing';\nexport const y = [x, z, src];\n")
+rc, c, out = T.run(os.path.join(S, "load_built.py"), tmpl_bad)
+T.status_is("phase 8: a real missing import next to a template literal still FAILs", c, "built.resolve", "FAIL", out)
+T.expect("phase 8: the FAIL names the real specifier, not the template text", "zod-missing" in c.get("built.resolve", {}).get("evidence", "") and "hono" not in c["built.resolve"]["evidence"], c.get("built.resolve", {}).get("evidence", ""))
 
 T.finish()

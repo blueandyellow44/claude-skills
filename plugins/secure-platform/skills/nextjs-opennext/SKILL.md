@@ -43,7 +43,7 @@ The three results and the matcher review.
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: an unguarded `'use server'` delete, `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`, and a static export with only headers() all FAIL. Known-good: an action that calls `requireUser()` with an owner filter, an anon key, and a static export with `public/_headers` PASS.
+Known-bad: an unguarded `'use server'` delete, `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`, and a static export with only headers() all FAIL. Phase 8 (2026-11-01): an inline, non-exported `'use server'` closure inside a component is an action and FAILs unguarded; an action that calls `getSession()` and only logs the result FAILs (a read is not a check); `NEXT_PUBLIC_OPENAI_API_KEY` FAILs (KEY and API_KEY suffixes count). Known-good: an action that calls `requireUser()` with an owner filter, one that reads the session and rejects null (`if (!session) redirect('/login')`), a non-exported helper in a 'use server' file (not an action), an anon key, `NEXT_PUBLIC_MAPBOX_TOKEN`, `*_PUBLISHABLE_KEY`, `*_SITE_KEY` (public by design), and a static export with `public/_headers` PASS.
 
 ## Rules
 

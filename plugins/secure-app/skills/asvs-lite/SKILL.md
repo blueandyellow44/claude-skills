@@ -48,7 +48,7 @@ The five automated results and the checklist answers with evidence.
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad (shaped like the map app before its repair): reflected origin with credentials, `err.stack` in onError, `/api/debug/env`, a cookie-only sign-out, and an unowned `DELETE /api/walks/:id` all FAIL. Known-good: an origin list, a generic error, a revoked-session insert on sign-out and an owner check all PASS; auth middleware over `/api/*` counts as a guard.
+Known-bad (shaped like the map app before its repair): reflected origin with credentials, `err.stack` in onError, `/api/debug/env`, a cookie-only sign-out, and an unowned `DELETE /api/walks/:id` all FAIL. Known-good: an origin list, a generic error, a revoked-session insert on sign-out and an owner check all PASS; auth middleware over `/api/*` counts as a guard. Phase 8 (2026-11-01, from the detection benchmark): Fastify `register(cors, { origin: true, credentials: true })`, a stack copied into a local and then sent, a hyphenated `/api/debug-info`, a sign-out whose only write is an audit-log INSERT, an `ownerId` read from the request body, a 403 that only refuses locked notes, a raw Worker `pathname.startsWith('/api/notes/') && request.method === 'DELETE'` handler, `req.headers['x-user-id']` and a FastAPI `x_user_id: str = Header(...)` all FAIL; `c.header('X-Tenant-Id', value)` (a response header write) PASSes.
 
 ## Rules
 

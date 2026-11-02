@@ -19,9 +19,10 @@ Then run a skill. Plugin skills are namespaced by their plugin, so `draft-critic
 | `secure-core` | `secure-launch`, `security-inventory`, `launch-security-audit` | Mapping a repo's attack surface and running the whole security suite into one ledger |
 | `secure-secrets` | `secret-scan`, `transcript-secret-guard`, `secret-rotation` | Keeping key values out of repos and saved sessions, and rotating them |
 | `secure-supply-chain` | `dependency-audit`, `built-code-load-check` | Dependency risk without automatic upgrades |
-| `secure-app` | `asvs-lite`, `abuse-and-spend`, `outbound-fetch-guard`, `mutation-proven-tests` | App-layer holes, open proxies, and paid APIs with no spending cap |
-| `secure-platform` | `cloudflare-pages-workers`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
+| `secure-app` | `asvs-lite`, `auth-gate-check`, `abuse-and-spend`, `ai-route-metering`, `outbound-fetch-guard`, `mcp-tool-scope`, `mutation-proven-tests` | App-layer holes, open proxies, paid APIs with no spending cap, and MCP tools that read or write past the caller's scope |
+| `secure-platform` | `cloudflare-pages-workers`, `cloudflare-account`, `nextjs-opennext`, `fly-supabase`, `google-apps-script`, `railway` | Platform settings, one adapter per host |
 | `secure-gate` | `secure-gate` | Refusing a launch while any check is failing or unknown |
+| `secure-ai` | `ai-attack-surface`, `ai-redteam` | How an app feeds and trusts a model, and prompt-injection probes against a local dev server |
 | `voice-gate` | `voice-gate`, `voice-gate-reviser`, `voice-gate-builder`, `voice-gate-interview` | Checking a finished draft against a voice profile (lives in its own repo) |
 | `second-brain` | 15 skills, from `session-wrap` to `vault-doctor`, plus session hooks | A session manager for a markdown vault |
 | `youtube-recut` | `youtube-recut` | Recutting raw footage into a tighter YouTube edit, with checks before any render is handed over |

@@ -50,6 +50,10 @@ REGISTRY = [
     ("secure-app", "check_app.py", lambda s: True),
     ("secure-app", "check_fetch.py", lambda s: True),
     ("secure-app", "check_spend.py", lambda s: True),
+    ("secure-app", "check_auth_gates.py", lambda s: True),
+    ("secure-app", "check_metering.py", lambda s: True),
+    ("secure-app", "check_mcp.py", lambda s: True),
+    ("secure-ai", "check_ai.py", lambda s: True),
     ("secure-platform", "check_cloudflare.py", lambda s: "cloudflare" in s or "no wrangler config, _headers or functions/"),
     ("secure-platform", "check_nextjs.py", lambda s: "nextjs" in s or "no next dependency"),
     ("secure-platform", "check_fly_supabase.py", lambda s: bool({"fly", "supabase"} & set(s)) or "no fly.toml or Supabase"),
@@ -154,9 +158,10 @@ def main():
     accepted = ledger.load_accepted(repo)
     led = ledger.build(repo, results, stack, adapters, accepted, blind)
     led["complete"] = True
-    led["git"] = _git_state(repo)
     json.dump(led, open(os.path.join(out, "findings.json"), "w"), indent=1)
     open(os.path.join(out, "findings.md"), "w").write(ledger.to_markdown(led))
+    led["git"] = _git_state(repo)  # taken AFTER every output file exists, so a default in-repo run (DIR inside REPO) fingerprints the tree the gate will see
+    json.dump(led, open(os.path.join(out, "findings.json"), "w"), indent=1)
     c = led["counts"]
     print("%s: %d FAIL, %d UNKNOWN, %d PASS -> %s" % (os.path.basename(repo), c["FAIL"], c["UNKNOWN"], c["PASS"], os.path.join(out, "findings.md")))
     if c["FAIL"]:

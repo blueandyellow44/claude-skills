@@ -9,7 +9,8 @@ files=$( { git ls-files; git ls-files --others --exclude-standard; } | grep -v '
 pattern='/Users/|Second Brain|~/vault|Tasks/lessons|maxs-coach|litmustimes|wallywalks\.com|sheahan\.ai|Intent Solutions|Jeremy|Bethel|\(Max, 20'
 hits=$(printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 grep -nIE "$pattern" 2>/dev/null)
 # Obsidian wikilinks render literally on GitHub; only prose files can carry them.
-wl=$(printf '%s\n' "$files" | grep -E '\.md$' | tr '\n' '\0' | xargs -0 grep -nE '\[\[[A-Za-z][^]]*\]\]' 2>/dev/null)
+# A [[...]] inside backticks is code (a wrangler [[ratelimits]] block), not a wikilink.
+wl=$(printf '%s\n' "$files" | grep -E '\.md$' | tr '\n' '\0' | xargs -0 perl -ne 'my $l = $_; $l =~ s/`[^`]*`//g; print "$ARGV:$.:$_" if $l =~ /\[\[[A-Za-z][^]]*\]\]/; close ARGV if eof' 2>/dev/null)
 hits=$(printf '%s\n%s' "$hits" "$wl" | sed '/^$/d')
 # second-brain documents Tasks/lessons.md as part of the vault layout it expects;
 # there the path is the product, not a pointer to a private vault.
