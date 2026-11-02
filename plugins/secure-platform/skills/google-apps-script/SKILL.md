@@ -41,7 +41,7 @@ Access, scopes and key results per manifest.
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: ANYONE_ANONYMOUS with USER_DEPLOYING (critical), the full drive scope, and a key in Index.html all FAIL, with the key never printed. Known-good: DOMAIN, drive.file, PropertiesService PASS. A manifest without oauthScopes is UNKNOWN.
+Known-bad: ANYONE_ANONYMOUS with USER_DEPLOYING (critical), the full drive scope, and a key in Index.html all FAIL, with the key never printed. Known-good: DOMAIN, drive.file, PropertiesService PASS. A manifest without oauthScopes is UNKNOWN. Phase 8 regressions: a key literal in a clasp TypeScript source (`src/config.ts`) FAILs with the value never printed; `SPREADSHEET_KEY` holding a Drive id (and `ROSTER_KEY` passed to `openById`) PASS because an id is not a credential, while the same id-shaped value under a non-Drive name sent to an API still FAILs.
 
 ## Rules
 

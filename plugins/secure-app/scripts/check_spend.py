@@ -7,16 +7,29 @@ forward traffic, and what stops them.
   spend.cap.<provider>  a paid API called with no spend-cap reference in the
                         calling file or a file it imports FAILs high.
   spend.unset-cap       a cap read from config that falls back to unlimited
-                        when unset (|| Infinity, ?? 1e9, "if (!cap) proceed")
-                        FAILs high. An unset cap must mean paused.
+                        when unset (|| Infinity, ?? 1e9, "if (!cap) proceed",
+                        a string default of "inf" or "Infinity" fed to float()
+                        or Number(), or `isNaN(limit) || used < limit`, which
+                        lets an unparseable limit through) FAILs high. An unset
+                        cap must mean paused.
   spend.open-proxy      a route that takes request input and forwards it to a
                         third-party host with no bounds check in the handler
                         FAILs medium (a map app's /api/route and
-                        /api/reverse before its service-area bounds).
+                        /api/reverse before its service-area bounds). A handler
+                        that hands request input to an imported helper which
+                        does the fetch is the same proxy split in two: the
+                        helper is followed one file over and its body may hold
+                        the bound.
   spend.per-client      forwarding or paid routes exist and nothing in the repo
                         limits a single client (no limiter, no 429) FAILs medium.
+                        A limiter keyed on a value the caller chose (a userId
+                        from the JSON body) limits nothing: only an IP, a
+                        session, or a server-derived id counts as a client key.
   spend.llm-params      max_tokens, n or model taken straight from the request
-                        FAILs medium (a caller sets your bill).
+                        FAILs medium (a caller sets your bill). The request is
+                        traced through the names it is bound to: `body`, a
+                        destructuring, or a schema-parsed copy (`input =
+                        Schema.parse(await c.req.json())`, then `input.model`).
 """
 import os
 import re
@@ -31,6 +44,19 @@ from ledger import result  # noqa: E402
 
 CAP_FALSY_SKIP = re.compile(r"""if\s*\(\s*[\w.]*(?:cap|limit|budget|ceiling)\w*\s*&&""", re.I)
 UNLIMITED_VALUE = re.compile(r"""\b\w*(?:cap|limit|budget|ceiling|max)\w*\s*[:=]\s*(?:Number\.MAX_SAFE_INTEGER|Number\.POSITIVE_INFINITY|Infinity|1e\d{2,}|float\(['"]inf['"]\)|math\.inf)""", re.I)
+# A string default of "inf"/"Infinity" (or a ten-digit number) that float()/Number() turns into an unlimited
+# cap: float(os.environ.get("DAILY_CAP_USD", "inf")), Number(env.DAILY_LIMIT ?? 'Infinity'). Strings are kept
+# for this one pattern because the fallback IS the string; the call shape around it keeps prose out.
+UNLIMITED_DEFAULT = re.compile(
+    r"""\b(?:float|int|Number|parseFloat|parseInt)\(\s*(?:os\.environ\.get|os\.getenv|getenv|environ\.get)\(\s*['"](?P<pyname>[^'"]+)['"]\s*(?:,|\)\s*or)\s*['"](?:inf|infinity|1e\d+|\d{9,})['"]"""
+    r"""|\b(?:Number|parseFloat|parseInt|float)\(\s*(?:[\w$.]*env\.(?P<jsname>[\w$]+)|[\w$]+\.get\(\s*['"](?P<getname>[^'"]+)['"]\s*\))\s*(?:\?\?|\|\|)\s*['"](?:inf|infinity|1e\d+|\d{9,})['"]""", re.I)
+CAP_NAME = re.compile(r"cap|limit|budget|ceiling|max|quota|spend|cost|cutoff", re.I)
+# `Number.isNaN(limit) || used < limit`: an unset limit is NaN, the left side is true, and the call proceeds.
+# The same test in front of an "over" comparison (`isNaN(cap) || spent >= cap`) pauses, so only a
+# "within" comparison (the cap on the greater side) is the unlimited fallback.
+NAN_PROCEEDS = re.compile(
+    r"""(?:!\s*(?:Number\.)?isFinite|(?:Number\.)?isNaN)\(\s*(?P<cap>[\w$.]*(?:cap|limit|budget|ceiling|max|quota)[\w$]*)\s*\)\s*\|\|\s*"""
+    r"""(?:[\w$.()\[\]]+\s*<=?\s*(?P=cap)\b|(?P=cap)\s*>=?\s*[\w$.()\[\]]+)""", re.I)
 UNLIMITED = re.compile(r"""(?:(?:cap|limit|budget|ceiling|max)\w*\s*(?:\)|\b)\s*(?:\|\||\?\?)\s*(?:Infinity|Number\.(?:MAX_SAFE_INTEGER|POSITIVE_INFINITY)|1e\d+|9{4,}))|if\s*\(\s*!\s*[\w.]*(?:cap|limit|budget|ceiling)\w*\s*\)\s*(?:return\s+(?:await\s+)?next\(\)|\{\s*//\s*no\s+cap)""", re.I)
 BOUNDS = re.compile(r"bounds|bbox|within|inBounds|isIn[A-Z]\w*|clamp|validate|schema|zod|\.parse\(|safeParse|MAX_|maxLength|\.slice\(0|allowlist|allowed|isFinite|Math\.(?:min|max)\(|> ?\d{2,}|< ?-?\d{2,}|too (?:far|long|many)", re.I)
 # A limiter is code that refuses: a limiter object or binding, or a 429 the app itself RETURNS.
@@ -41,24 +67,46 @@ BOUNDS = re.compile(r"bounds|bbox|within|inBounds|isIn[A-Z]\w*|clamp|validate|sc
 LIMITER = re.compile(r"\b\w*[Ll]imiter\b\s*\.(?:hit|check|take|consume|limit|allow|tryAcquire|acquire|increment)\s*\(|\bnew\s+\w*[Ll]imiter\s*\(|\b(?:const|let|var)\s+\w*[Ll]imiter\s*="
                      r"|\benv\.\w*RATE_?LIMIT\w*\.limit\s*\(|\[\[unsafe\.bindings\]\]|\[\[ratelimits\]\]|\bratelimits\s*[=:]"
                      r"|\b(?:return|c\.json|c\.text|new\s+Response|Response\.json|HTTPException)\b[^;\n]{0,160}\b429\b|\bres\.status\(\s*429|\bstatus(?:_code)?\s*:\s*429\b|\bstatus_code\s*=\s*429\b|@limiter\.limit|slowapi")
-# Per CLIENT: the limiter's neighbourhood names who is being limited (an IP, a user, a session, an account).
+# Per CLIENT: the limiter's neighborhood names who is being limited (an IP, a user, a session, an account).
 CLIENT_KEY = re.compile(r"cf-connecting-ip|x-forwarded-for|x-real-ip|\bip\b|clientIp|remoteAddr|userId|user\.id|user_id|accountId|account_id|teacherId|session|sub\b|perClient|per_client|keyFor|clientKey", re.I)
-LLM_PARAMS = re.compile(r"""\b(max_tokens|maxTokens|max_output_tokens|\bn)\s*:\s*(?:body|req\.body|req\.query|payload|c\.req|reqBody|requestBody)\b[\w.\[\]'"]*""")
-LLM_MODEL = re.compile(r"""\bmodel\s*:\s*(?:body|req\.body|req\.query|payload|reqBody|requestBody)\.\w+""")
+# The request's fixed names; per file, the names it is bound to (surface.request_names) are added.
+LLM_SOURCES = ("body", "req.body", "req.query", "payload", "c.req", "reqBody", "requestBody")
 # A cap that guards: compared against, or a cap function called. Not an import, a type, or a value
 # echoed back to the client (a coaching app's index.ts returns DAILY_OUTPUT_BUDGET for display only).
 GUARD_SHAPE = re.compile(r"\s(?:<=?|>=?)\s|\bif\s*\(.*\b\w*(?:cap|limit|budget|quota|max)\w*|\b\w*(?:[Cc]ap|[Ll]imit|[Bb]udget|[Qq]uota)\w*\s*\(|\bthrow\b|raise\b|Math\.min\(", re.I)
 CAP_MW_NAME = re.compile(r"(?:require|enforce|check|with)\w*(?:[Cc]aps?|[Bb]udget|[Ss]pend|[Qq]uota)|(?:[Cc]aps?|[Bb]udget|[Ss]pend|[Qq]uota)\w*(?:[Gg]uard|[Gg]ate|[Mm]iddleware)")
 CAP_CALL = re.compile(r"\bnew\s+\w*(?:Spend|Budget|Quota|Cost)\w*\s*\(|\b(?:await\s+)?[\w.]*(?:[Ss]pend|[Bb]udget|[Qq]uota|[Cc]aps?|[Ll]imits?|[Mm]eter)\w*\s*\.\s*(?:reserve|check|assert|enforce|consume|begin|charge|allow)\w*\s*\(|\b(?:check|assert|enforce|over|within|reserve|charge|consume|guard)\w*(?:[Ss]pend|[Bb]udget|[Qq]uota|[Cc]aps?|[Ll]imits?)\w*\s*\(")
 CLIENT_CODE = re.compile(r"(?:^|/)(?:components|hooks|public|client|frontend)/|\.(?:tsx|jsx|vue|svelte|html)$")
-# `import type` brings no code: it is not a call path (a coaching app's prose.ts imports a TYPE from coach.ts)
-IMPORT_REL = re.compile(r"""(?:^|[;\n])\s*(?:import\s+(?!type\b)(?:[^'";]*?\s+from\s+)?|export\s+(?!type\b)[^'";]*?\s+from\s+|[^\n]*?\brequire\(\s*)['"](\.{1,2}/[^'"]+)['"]""")
-EXTS = ("", ".ts", ".tsx", ".js", ".mjs", "/index.ts", "/index.js")
-JS_TO_TS = re.compile(r"\.(?:js|mjs)$")
-
 
 DESTRUCT = re.compile(r"""(?:const|let|var)\s*\{([^}]{1,300})\}\s*=\s*(?:await\s+)?([^;\n]{1,200})""")
 LLM_KEYS = re.compile(r"""\b(model|max_tokens|maxTokens|max_output_tokens|n)\s*(?::\s*([A-Za-z_$][\w$]*))?\s*[,}\n]""")
+
+CALLER_CHOSEN_PREFIX = re.compile(r"(?:\bbody|\bpayload|\breqBody|\brequestBody|req\.body|\.data|\.(?:query|param|header)\(\s*['\"]?)\s*\.?\s*$")
+IP_KEY = re.compile(r"cf-connecting-ip|x-forwarded-for|x-real-ip|\bip\b|clientIp|remoteAddr", re.I)
+
+
+def _caller_chosen(window, m, names):
+    """The client-key token at match m is a value the caller picked: a body or query field, or a name bound
+    from the request. The connecting address is never caller-chosen here."""
+    tok = m.group(0)
+    if IP_KEY.search(tok):
+        return False
+    if tok in names:
+        return True
+    return bool(CALLER_CHOSEN_PREFIX.search(window[max(0, m.start() - 24):m.start()]))
+
+
+def _llm_from_request(repo):
+    """`max_tokens: body.maxTokens`, `model: input.model` where input = Schema.parse(await c.req.json()):
+    a request value, under any name the file binds it to, reaching model, n or max_tokens."""
+    out = []
+    for p in walk.files(repo, tests=False, served=True):
+        t = walk.read_code(p)
+        srcs = set(LLM_SOURCES) | surface.request_names(t)
+        rx = re.compile(r"""\b(?:max_tokens|maxTokens|max_output_tokens|model|n)\s*:\s*(?:%s)(?:\.data)?\.[\w$]+""" % "|".join(sorted(re.escape(x) for x in srcs)))
+        for m in rx.finditer(t):
+            out.append("%s:%d" % (walk.rel(repo, p), walk.line_of(t, m.start())))
+    return out
 
 
 def _destructured_llm(repo):
@@ -69,8 +117,10 @@ def _destructured_llm(repo):
         if not re.search(r"messages\.create|chat\.completions\.create|generateContent|max_tokens|maxTokens", t):
             continue
         names = set()
+        req_names = surface.request_names(t)
         for m in DESTRUCT.finditer(t):
-            if surface.REQ_INPUT_RX.search(m.group(2)) or re.match(r"(?:body|payload|reqBody|requestBody)\b", m.group(2)):
+            src = m.group(2).strip()
+            if surface.REQ_INPUT_RX.search(src) or re.match(r"(?:body|payload|reqBody|requestBody)\b", src) or src.split(".")[0].rstrip(")") in req_names:
                 names |= {x.split(":")[-1].split("=")[0].strip() for x in m.group(1).split(",")}
         if not names:
             continue
@@ -84,18 +134,27 @@ def _destructured_llm(repo):
     return out
 
 
+def _client_keyed(block, names):
+    """A client key in this block that the caller did not choose."""
+    return any(not _caller_chosen(block, m, names) for m in CLIENT_KEY.finditer(block))
+
+
 def _near_client_key(repo, rel, ln, span=12):
-    """The limiter is keyed by a client: a client key within `span` lines, or in the function it calls."""
-    lines = walk.read_code(os.path.join(repo, rel)).splitlines()
+    """The limiter is keyed by a client: a client key within `span` lines, or in the function it calls.
+    A key the caller supplies (`const { userId } = await c.req.json()` then `limit({ key: userId })`)
+    is not a client key: a new id per request and the limit never fires (bench 2026-11-01)."""
+    text = walk.read_code(os.path.join(repo, rel))
+    lines = text.splitlines()
+    names = surface.request_names(text)
     window = "\n".join(lines[max(0, ln - 1 - span): ln + span])
-    if CLIENT_KEY.search(window):
+    if _client_keyed(window, names):
         return True
     # a call like geoUpstreamAllowed(c): look inside that function's body in the same file
     for name in re.findall(r"\b(\w+)\s*\(", window):
-        m = re.search(r"(?:function\s+%s\s*\(|const\s+%s\s*=)" % (re.escape(name), re.escape(name)), "\n".join(lines))
+        m = re.search(r"(?:function\s+%s\s*\(|const\s+%s\s*=)" % (re.escape(name), re.escape(name)), text)
         if m:
-            body = "\n".join(lines)[m.start(): m.start() + 2500]
-            if CLIENT_KEY.search(body):
+            body = text[m.start(): m.start() + 2500]
+            if _client_keyed(body, names):
                 return True
     return False
 
@@ -111,25 +170,37 @@ def _importers(repo):
     out = {}
     for p in walk.files(repo, tests=False, served=True):
         src = walk.rel(repo, p)
-        for g in imported(repo, src)[1:]:
+        for g in surface.imported(repo, src)[1:]:
             out.setdefault(g, set()).add(src)
     return out
 
 
-def imported(repo, rel):
-    """The file plus the relative files it imports (one level)."""
-    out = [rel]
-    t = walk.read_code(os.path.join(repo, rel))
-    for m in IMPORT_REL.finditer(t):
-        base = os.path.normpath(os.path.join(os.path.dirname(rel), m.group(1)))
-        if not os.path.isfile(os.path.join(repo, base)):
-            base = JS_TO_TS.sub("", base)  # TypeScript ESM imports name the .js that the .ts becomes
-        for e in EXTS:
-            cand = base + e
-            if os.path.isfile(os.path.join(repo, cand)):
-                out.append(cand.replace(os.sep, "/"))
+def _helper_forward(repo, h, own_hosts):
+    """The handler hands request input to an imported helper that fetches a third-party host: the same
+    open proxy split across two files (a map app's /api/reverse calling geo.ts). Followed one file over.
+    Returns (hosts, helper body, 'file:function') or None."""
+    text = walk.read_code(os.path.join(repo, h["file"]))
+    names = surface.import_names(repo, h["file"])
+    req_names = surface.request_names(text)
+    for m in re.finditer(r"\b([A-Za-z_$][\w$]*)\s*\(", h["code"]):
+        name = m.group(1)
+        if name not in names:
+            continue
+        args = h["body"][m.end() - 1:]
+        depth, k = 0, 0
+        for k, ch in enumerate(args):
+            depth += (ch == "(") - (ch == ")")
+            if depth == 0:
                 break
-    return out
+        args = args[:k + 1]
+        if not (surface.REQ_INPUT_RX.search(args) or any(re.search(r"\b%s\b" % re.escape(n), args) for n in req_names)):
+            continue
+        target, orig = names[name]
+        body = walk.function_body(walk.read_code(os.path.join(repo, target)), orig)
+        hosts = {hm.group(1) for hm in surface.URL_HOST_RX.finditer(body)} - own_hosts
+        if hosts and re.search(r"\bfetch\(|axios|got\(", body):
+            return hosts, body, "%s:%s" % (target, orig)
+    return None
 
 
 def main():
@@ -181,7 +252,7 @@ def main():
                 names = set()
                 for m in re.finditer(r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", walk.read_code(os.path.join(repo, rel))):
                     base = os.path.normpath(os.path.join(os.path.dirname(rel), m.group(2)))
-                    if os.path.splitext(callee)[0] in (base, JS_TO_TS.sub("", base)):
+                    if os.path.splitext(callee)[0] in (base, surface.JS_TO_TS.sub("", base)):
                         names |= {x.split(" as ")[-1].strip() for x in m.group(1).split(",") if x.strip()}
                 if names:
                     # one level of same-file helpers: function draft() { ... llmCall() ... } called by the route
@@ -224,9 +295,15 @@ def main():
                               fix="add a daily spend cap checked before every call, paused (not unlimited) when unset",
                               detail=None if has_routes else "no public route found: spend here is driven by schedules or scripts, not by strangers"))
 
-    unl = ["%s:%d" % (r, ln) for r, ln, _ in walk.find(repo, UNLIMITED, tests=False, served=True)]
-    unl += ["%s:%d (cap enforced only when set)" % (r, ln) for r, ln, _ in walk.find(repo, CAP_FALSY_SKIP, tests=False, served=True)]
-    unl += ["%s:%d (a cap set to unlimited)" % (r, ln) for r, ln, _ in walk.find(repo, UNLIMITED_VALUE, tests=False, served=True)]
+    # strings=False: a cap is code. Text inside a string literal (a bundled card embedded as JSON,
+    # zod's "maximum: Number.MAX_SAFE_INTEGER" error text) is not a cap (2026-10-15 false positive).
+    unl = ["%s:%d" % (r, ln) for r, ln, _ in walk.find(repo, UNLIMITED, tests=False, served=True, strings=False)]
+    unl += ["%s:%d (cap enforced only when set)" % (r, ln) for r, ln, _ in walk.find(repo, CAP_FALSY_SKIP, tests=False, served=True, strings=False)]
+    unl += ["%s:%d (a cap set to unlimited)" % (r, ln) for r, ln, _ in walk.find(repo, UNLIMITED_VALUE, tests=False, served=True, strings=False)]
+    unl += ["%s:%d (an unparseable cap passes the guard)" % (r, ln) for r, ln, _ in walk.find(repo, NAN_PROCEEDS, tests=False, served=True, strings=False)]
+    # strings kept here: the unlimited fallback IS a string ("inf") and the call around it is the code shape.
+    unl += ["%s:%d (default of \"inf\" when unset)" % (r, ln) for r, ln, m in walk.find(repo, UNLIMITED_DEFAULT, tests=False, served=True)
+            if CAP_NAME.search(m.group("pyname") or m.group("jsname") or m.group("getname") or "")]
     if unl:
         res.append(result("spend.unset-cap", "An unset cap means paused, not unlimited", "FAIL", ledger.join_hits(unl, 6, ", "), severity="high",
                           fix="treat a missing or unparseable cap as 0 (paused) and say so in the response"))
@@ -240,10 +317,13 @@ def main():
             continue
         hosts = {m.group(1) for m in surface.URL_HOST_RX.finditer(h["body"])} - own_hosts
         calls_out = hosts and re.search(r"\bfetch\(|axios|got\(", h["body"])
-        if calls_out:
+        via = None if calls_out else _helper_forward(repo, h, own_hosts)
+        if via:
+            hosts, helper_body, where = via
+        if calls_out or via:
             forwarders.append(h)
-            if not BOUNDS.search(h["body"]):
-                proxies.append("%s:%d %s %s -> %s" % (h["file"], h["line"], h["method"], h["path"], ",".join(sorted(hosts))[:60]))
+            if not (BOUNDS.search(h["body"]) or (via and BOUNDS.search(helper_body))):
+                proxies.append("%s:%d %s %s -> %s%s" % (h["file"], h["line"], h["method"], h["path"], ",".join(sorted(hosts))[:60], " via %s" % where if via else ""))
     if proxies:
         res.append(result("spend.open-proxy", "Routes that forward to other services bound their input", "FAIL", ledger.join_hits(proxies, 6, "; "), severity="medium",
                           fix="bound every forwarded value (area, length, count) and refuse anything outside before calling out"))
@@ -262,8 +342,7 @@ def main():
                               "%d paid provider(s), %d forwarding route(s), no limiter or 429 anywhere" % (len(sites), len(forwarders)), severity="medium",
                               fix="add a per-client ceiling in code (in memory if the privacy page promises no storage) and a zone rate-limit rule as a backstop"))
 
-    llm = ["%s:%d" % (r, ln) for r, ln, _ in walk.find(repo, LLM_PARAMS, tests=False, served=True)] + ["%s:%d" % (r, ln) for r, ln, _ in walk.find(repo, LLM_MODEL, tests=False, served=True)]
-    llm += _destructured_llm(repo)
+    llm = _llm_from_request(repo) + _destructured_llm(repo)
     if llm:
         res.append(result("spend.llm-params", "The caller cannot set model, n or max_tokens", "FAIL", ledger.join_hits(llm, 6, ", "), severity="medium",
                           fix="fix model and max_tokens server-side; clamp anything the client may tune"))

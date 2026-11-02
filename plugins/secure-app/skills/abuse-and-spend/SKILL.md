@@ -34,6 +34,7 @@ A paid API or a forwarding route exists, or a bill surprised someone.
 5. For `spend.per-client`: per-client ceiling in code first (in memory when storage would break a privacy promise), zone rule second (the pages.dev alias bypasses zone rules).
 6. Prove each control with `mutation-proven-tests`: remove the cap or bound in a worktree, the test must fail, and the mocked provider's call count must show nothing was spent.
 7. Never burst-test a route that reaches a paid or outside service; burst only a cached URL (cloudflare-pages-workers).
+8. When the cap is a request count rather than dollars, or a route reaches a model API with no counter at all, run `ai-route-metering`: it checks that a daily counter is reserved BEFORE every paid call and ships the guard template (the Workers rate-limit binding is best-effort; the counter is the hard cap).
 
 ## Outputs
 
@@ -48,7 +49,7 @@ Per provider: call sites, cap location, enforcement verdict; forwarding routes w
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: an uncapped Anthropic call, `Number(env.DAILY_SPEND_CAP) || Infinity`, an unbounded OSRM forward, no limiter, and `model: body.model` all FAIL. Known-good: a cap checked before the call that pauses when unset, a service-area bound, a limiter, and fixed model and max_tokens all PASS.
+Known-bad: an uncapped Anthropic call, `Number(env.DAILY_SPEND_CAP) || Infinity`, `float(os.environ.get("DAILY_CAP_USD", "inf"))`, `Number.isNaN(limit) || used < limit` (an unset limit is NaN and proceeds), an unbounded OSRM forward, a route that hands request input to an imported helper which fetches the Maps API (the proxy split across two files), a limiter keyed on a `userId` from the JSON body, `model: body.model`, and `model: input.model` where `input = Schema.parse(await c.req.json())` all FAIL. Known-good: a cap checked before the call that pauses when unset, `!Number.isFinite(cap) || cap <= 0` returning "over", a service-area bound in the handler or in the helper it calls, a limiter keyed on `cf-connecting-ip`, and an allow-listed model with a clamped max_tokens all PASS (bench 2026-11-01).
 
 ## Rules
 

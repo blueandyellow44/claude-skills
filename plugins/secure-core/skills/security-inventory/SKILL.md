@@ -37,13 +37,13 @@ A repo is about to be audited, launched, or handed to someone, and the question 
 ## Failure handling
 
 - A router pattern it does not know (a custom framework): routes come back empty. Say "routes not mapped" rather than "no routes", and list them by hand from the entry file.
-- A monorepo: run it on each app folder as well as the root.
+- A monorepo: run it on each app folder as well as the root. Stack detection already reads nested fly.toml, railway configs and supabase/ folders, so the platform adapters run from the root; the per-folder run is for routes and fetches.
 
 ## Verification
 
 `bash <base>/../../tests/run_tests.sh`
 
-Finds exactly the three production routes of a Hono fixture and not the test-only one, marks the uncapped Anthropic call, sees a spend cap when one is added, and maps an empty repo to nothing.
+Finds exactly the three production routes of a Hono fixture and not the test-only one, marks the uncapped Anthropic call, sees a spend cap when one is added, and maps an empty repo to nothing. Stack detection (Phase 8): a fly.toml, railway.json or railway.toml anywhere below the root (one service per folder in a monorepo), a supabase/ project folder one or two levels down (config.toml, migrations/ or functions/ inside), and the Python supabase client (requirements.txt, pyproject or `from supabase import`) each route to their adapter; a src/lib/supabase/ client folder alone and a fly.toml inside node_modules do not.
 
 ## Rules
 

@@ -129,6 +129,56 @@ for cmd in ["cat .*", "cat .??*", "head .e*", "cat .[e]nv"]:
     rc, err = guard(cmd)
     T.expect("guard still blocks dotfile globs: %s" % cmd, rc == 2, "rc=%d" % rc)
 
+# ---------- Phase 8 (2026-11-01): five false blocks found live in one day ----------
+LIVE_ALLOW = [
+    # a STATE.md edit whose heredoc PROSE names secrets files
+    "cd ~/suite && python3 - <<'EOF'\np='STATE.md'; s=open(p).read()\ns += 'more file shapes: .env.production.local, *.key, id_rsa, .envrc; .env.vault excluded'\nopen(p,'w').write(s)\nEOF\ngrep -c Phase STATE.md",
+    # a filtered copy of the environment, nothing printed
+    "python3 - <<'EOF'\nimport os\nclean = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}\nimport subprocess; subprocess.run(['git', 'status'], env=clean)\nEOF",
+    # a grep whose PATTERN contains env, piped
+    "grep -rn 'process.env' src | head -20",
+    "grep -c env file.ts",
+    # a GraphQL call carrying ids=
+    "gh api graphql -f query='{ nodes(ids: [\"x\"]) { id } }' -F ids=abc",
+    # the Dreamer session's four, verbatim shapes (no value in any of them)
+    """cd ~ && which gitleaks || echo "NO gitleaks"; echo "=== six laptop-only ==="; for d in midterm-2026 intent-keys "LinkedIn Gate" Secure-Launch duckalos two-pane-demo; do [ -d "$d/.git" ] || { echo "$d: NOT A REPO (ls: $(ls -d ~/$d* 2>/dev/null | head -2))"; continue; }; echo "--- $d"; git -C "$d" branch --show-current; echo "dirty: $(git -C "$d" status --porcelain | wc -l | tr -d ' ')  commits: $(git -C "$d" rev-list --count HEAD)  size: $(du -sh "$d/.git" | cut -f1)"; echo "tracked env/keys: $(git -C "$d" ls-files | grep -iE '(^|/)\\.env|secret|credential|\\.pem$|service-account' | head -3 | tr '\\n' ' ')"; echo "gitignore: $([ -f "$d/.gitignore" ] && grep -cE 'node_modules|\\.env' "$d/.gitignore" || echo none)"; done""",
+    """cd ~ && SECRET_GUARD_ALLOW=1 bash -c 'which gitleaks || echo "NO gitleaks"; for d in a b; do echo "$d"; done'""",
+    """ids=$(gh api graphql -f query='{ a:repository(owner:"blueandyellow44",name:"midterm-2026"){id} }' -q '[.data.a.id] | @json'); gh api graphql -f query="mutation { updateUserPinnedItems(input:{itemIds:$ids}) { user { pinnedItems(first:6){ nodes { ... on Repository { name } } } } } }" -q '.data.updateUserPinnedItems.user.pinnedItems.nodes[].name' | tr '\\n' ' '""",
+    """gh api graphql -f query='{ user(login:"blueandyellow44"){ pinnedItems(first:6){ nodes { ... on Repository { name } } } } }' -q '.data.user.pinnedItems.nodes[].name' | tr '\\n' ' '""",
+    # a commit helper whose message only mentions the word env (reported live 2026-11-01 ~17:15)
+    'c(){ msg="$1"; shift; git add -- "$@" && git commit -q -m "$msg"; }; c "chore(config): tidy. Gitleaks clean; env holds only two feature flags." settings.json CLAUDE.md',
+    # a multi-line message passed to a shell function: "; env" sits inside the quotes (live 2026-11-01, second report)
+    'c(){ msg="$1"; shift; git add -- "$@" && git commit -q -m "$msg"; }\nc "chore(config): record the live settings\n\nCLAUDE.md: ROE count now 19, lessons size. Gitleaks clean; env\nholds only two feature flags." settings.json',
+    'git commit -q -m "chore(config): record the live settings\nCLAUDE.md: ROE count now 19, lessons size. Gitleaks clean; env\nholds only two feature flags." settings.json',
+    # the override after a cd
+    "cd ~/suite && SECRET_GUARD_ALLOW=1 cat .dev.vars",
+    "cd ~/suite && for f in a b; do echo $f; done; SECRET_GUARD_ALLOW=1 python3 x.py",
+]
+LIVE_BLOCK = [
+    "python3 - <<'PY'\nimport os\nprint(dict(os.environ))\nPY",
+    "python3 - <<'PY'\nimport os\nfor k, v in os.environ.items(): print(k, v)\nPY",
+    "python3 - <<'PY'\nprint(open('.env').read())\nPY",
+    "node - <<'JS'\nconsole.log(JSON.stringify(process.env))\nJS",
+    "cd ~/suite && cat .dev.vars",
+    "bash -c \"true; env\"",
+    "sh -c 'printenv'",
+    "eval \"cat .dev.vars\"",
+    "echo hi\nenv",
+    "cd x; env",
+    "grep -iE 'x' .env",
+    "grep '' .dev.vars",
+    "jq '.' .dev.vars",
+    "echo \"$(grep -v '^#' .dev.vars)\"",
+    "grep -rn x . ; env",
+    "env | sort",
+]
+for cmd in LIVE_ALLOW:
+    rc, err = guard(cmd)
+    T.expect("guard (live 2026-11-01) allows: %s" % cmd[:70].replace("\n", " "), rc == 0, err.strip()[:200])
+for cmd in LIVE_BLOCK:
+    rc, err = guard(cmd)
+    T.expect("guard (live 2026-11-01) still blocks: %s" % cmd[:70].replace("\n", " "), rc == 2, "rc=%d" % rc)
+
 # ---------- scan_captures ----------
 caps = T.tree({"2026/10/session-a.md": "user ran it and got MAPS=%s\n" % GKEY, "2026/10/session-b.md": "nothing here\n"})
 r = subprocess.run([sys.executable, os.path.join(S, "scan_captures.py"), caps], capture_output=True, text=True)
@@ -226,5 +276,88 @@ for cmd in AUDIT2_BLOCK:
 for cmd in ["node --env-file=.dev.vars server.js", "node --env-file=.dev.vars --watch src/server.ts", "source .env && npm test", "ls -la .dev.vars", "git check-ignore -v .dev.vars"]:
     rc, err = guard(cmd)
     T.expect("guard (audit 2) still allows: %s" % cmd[:60], rc == 0, err.strip()[:160])
+
+# ---------- Phase 8 (2026-11-01): the 14 benchmark known misses, each as FAIL-side and PASS-side fixtures ----------
+import json as _json, re
+P8 = random.Random(808)
+_al = string.ascii_letters + string.digits
+_pick = lambda a, n: "".join(P8.choice(a) for _ in range(n))
+_uuid = lambda: str(uuid.UUID(int=P8.getrandbits(128)))
+_hex64 = lambda: _pick("0123456789abcdef", 64)
+_pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(_pick(_al + "+/", 64) for _ in range(6)) + "\n-----END PRIVATE KEY-----\n"
+ANT = T.fake_key("anthropic", 81)
+GH8 = T.fake_key("github", 82)
+SK8 = T.fake_key("stripe", 83)
+
+# secrets.tracked: every secrets-file NAME, templates and the encrypted .env.vault excluded
+for label, name, want in (("two-suffix .env.production.local", ".env.production.local", "FAIL"), ("certs/server.key", "certs/server.key", "FAIL"),
+                          ("ssh id_rsa", "deploy/id_rsa", "FAIL"), ("a PKCS12 bundle", "certs/client.p12", "FAIL"),
+                          ("dotenv-vault .env.vault (encrypted, meant to be committed)", ".env.vault", "PASS"), ("a template .env.production.local.example", ".env.production.local.example", "PASS")):
+    body = _pem if name.endswith((".key", "id_rsa", ".p12")) else "SESSION_SECRET=committed-value\n"
+    rp = T.git_init(T.tree({"app.py": "print('x')\n", name: body}))
+    rc, c, out = T.run(os.path.join(S, "check_secrets.py"), rp)
+    T.status_is("tracked (%s)" % label, c, "secrets.tracked", want, out)
+
+# secrets.ignored: direnv's .envrc is a secrets file
+rp = T.git_init(T.tree({"app.py": "import os\nK = os.environ['OPENAI_API_KEY']\n", ".gitignore": "__pycache__\n"}))
+open(os.path.join(rp, ".envrc"), "w").write("export OPENAI_API_KEY=set-locally\n")
+rc, c, out = T.run(os.path.join(S, "check_secrets.py"), rp)
+T.status_is("ignored (.envrc present, not ignored)", c, "secrets.ignored", "FAIL", out)
+rp = T.git_init(T.tree({"app.py": "print('x')\n", ".gitignore": ".envrc\n"}))
+open(os.path.join(rp, ".envrc"), "w").write("export OPENAI_API_KEY=set-locally\n")
+rc, c, out = T.run(os.path.join(S, "check_secrets.py"), rp)
+T.status_is("ignored (.envrc ignored)", c, "secrets.ignored", "PASS", out)
+
+# secrets.allowlist: gitleaks:allow is read in every text file, only as a comment after code
+AWS8 = "AK" + "IA" + _pick(string.ascii_uppercase + "234567", 16)
+for label, files, want in (("inline allow in Terraform", {"main.tf": 'provider "aws" {\n  access_key = "%s" # gitleaks:allow\n}\n' % AWS8}, "FAIL"),
+                           ("inline allow in Go", {"cfg.go": 'package cfg\n\nconst awsKey = "%s" // gitleaks:allow\n' % AWS8}, "FAIL"),
+                           ("prose mention in CONTRIBUTING.md", {"CONTRIBUTING.md": "# Contributing\n\nNever add a `gitleaks:allow` comment to get CI green; rotate the key instead.\n"}, "PASS"),
+                           ("a comment-only line above the value silences nothing", {"main.tf": '# gitleaks:allow\naccess_key = "%s"\n' % AWS8}, "PASS")):
+    rp = T.git_init(T.tree(dict({"README.md": "# x\n"}, **files)))
+    rc, c, out = T.run(os.path.join(S, "check_secrets.py"), rp)
+    T.status_is("allowlist (%s)" % label, c, "secrets.allowlist", want, out)
+    if "AK" + "IA" in str(files):
+        T.status_is("allowlist (%s): the key itself is still found" % label, c, "secrets.history", "FAIL", out)
+    T.expect("allowlist (%s): value not printed" % label, AWS8 not in out)
+
+# secrets.history: identifier-NAMED hex/UUID/pk_ values are dismissed; the same shapes under any other name are kept
+HIST = [("idempotencyKey UUIDs in a fixture", {"test/orders.json": _json.dumps([{"id": _uuid(), "idempotencyKey": _uuid()} for _ in range(3)], indent=2)}, "PASS"),
+        ("a sha256 cacheKey", {"src/assets.ts": "export const assets = { styles: { path: '/styles.css', cacheKey: '%s' } }\n" % _hex64()}, "PASS"),
+        ("a Stripe publishable pk_live_ key", {"app/stripe.ts": "const STRIPE_PUBLISHABLE_KEY = '%s'\n" % ("pk" + "_live_" + _pick(_al, 40))}, "PASS"),
+        ("a Stripe SECRET key in the publishable slot", {"app/stripe.ts": "const STRIPE_PUBLISHABLE_KEY = '%s'\n" % SK8}, "FAIL"),
+        ("a UUID under a cache_secret name", {"src/c.ts": "const cache_secret = '%s'\n" % _uuid()}, "FAIL"),
+        ("a UUID Heroku key", {"deploy.sh": "export HEROKU_API_KEY=%s\n" % _uuid().upper()}, "FAIL"),
+        ("a hex api_key", {"src/k.py": "api_key = '%s'\n" % _hex64()}, "FAIL")]
+for label, files, want in HIST:
+    rp = T.git_init(T.tree(dict({"package.json": "{}\n"}, **files)))
+    rc, c, out = T.run(os.path.join(S, "check_secrets.py"), rp)
+    T.status_is("history (%s)" % label, c, "secrets.history", want, out)
+    if want == "PASS":
+        T.expect("history (%s): dismissed, and said so" % label, "dismissed" in c.get("secrets.history", {}).get("detail", ""), str(c.get("secrets.history"))[:200])
+    for v in files.values():
+        for tok in re.findall(r"[A-Za-z0-9_-]{32,}", v):
+            T.expect("history (%s): value not printed" % label, tok not in out)
+
+# check_secret_shape: specific rule wins, provider-mismatch, prefixed placeholder, = padding, placeholder words by name
+SHAPE = [("sk-ant- key in the OPENAI slot", "OPENAI_API_KEY=%s\n" % ANT, "shape.OPENAI_API_KEY", "FAIL"),
+         ("an sk-proj- key in the OPENAI slot", "OPENAI_API_KEY=%s\n" % ("sk-" + "proj-" + _pick(_al, 48)), "shape.OPENAI_API_KEY", "PASS"),
+         ("ghp_ followed by x's", "GITHUB_TOKEN=%s\n" % ("gh" + "p_" + "x" * 36), "shape.GITHUB_TOKEN", "FAIL"),
+         ("a real-shaped GitHub token", "GITHUB_TOKEN=%s\n" % GH8, "shape.GITHUB_TOKEN", "PASS"),
+         ("whsec_ under STRIPE_WEBHOOK_SECRET (webhook rule beats STRIPE.*SECRET)", "STRIPE_WEBHOOK_SECRET=whsec_%s\n" % _pick(_al, 32), "shape.STRIPE_WEBHOOK_SECRET", "PASS"),
+         ("a secret key in the webhook slot", "STRIPE_WEBHOOK_SECRET=%s\n" % SK8, "shape.STRIPE_WEBHOOK_SECRET", "FAIL"),
+         ("pk_live_ in STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY=%s\n" % ("pk" + "_live_" + _pick(_al, 40)), "shape.STRIPE_SECRET_KEY", "FAIL"),
+         ("base64 with = padding", "SESSION_SECRET=%s=\n" % _pick(_al, 43), "shape.SESSION_SECRET", "PASS"),
+         ("base64 with == padding", "SESSION_SECRET=%s==\n" % _pick(_al, 42), "shape.SESSION_SECRET", "PASS"),
+         ("NAME= followed by more value", "SESSION_SECRET=SESSION_SECRET=%s\n" % _pick(_al, 32), "shape.SESSION_SECRET", "FAIL"),
+         ("APP_ENV=test is a setting", "APP_ENV=test\n", "shape.APP_ENV", "PASS"),
+         ("API_KEY=test is a placeholder", "API_KEY=test\n", "shape.API_KEY", "FAIL"),
+         ("xxxx under any name", "REGION=xxxx\n", "shape.REGION", "FAIL")]
+for label, body, cid, want in SHAPE:
+    d8 = T.tree({".env": body})
+    rc, c, out = T.run(os.path.join(S, "check_secret_shape.py"), os.path.join(d8, ".env"))
+    T.status_is("shape (%s)" % label, c, cid, want, out)
+    val = body.split("=", 1)[1].strip()
+    T.expect("shape (%s): value not printed" % label, len(val) < 8 or val not in out)
 
 T.finish()

@@ -53,7 +53,7 @@ Headers before and after on every host; the embedders kept working; the revocati
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: headers only on `/api/*`, a secret in [vars], a preview reusing the production D1 id all FAIL, and a live page without headers FAILs per header. Known-good: a `/*` block with all four, hono `secureHeaders()`, separate preview ids PASS; a URL that does not answer is UNKNOWN. Embed search finds an iframe and skips node_modules.
+Known-bad: headers only on `/api/*`, a secret in [vars], a preview reusing the production D1 id all FAIL, and a live page without headers FAILs per header. Phase 8 (2026-11-01): a secret in wrangler.jsonc with `//` comments and trailing commas, in a top-level inline table `vars = { ... }`, or in `[env.X] vars = { ... }` FAILs; a wrangler.json env block reusing the production database_id FAILs; `secureHeaders({ xFrameOptions: false, strictTransportSecurity: false })` FAILs framing and HSTS (nosniff still PASSes) and the evidence names the option; a header NAME in a docs table or a CSP set in code without frame-ancestors is not the header being set and FAILs. Known-good: a `/*` block with all four, hono `secureHeaders()` (or its CSP `frameAncestors`), a set/append/setHeader call or an object key in code, separate preview ids PASS; `MAX_TOKENS`, `SESSION_TOKEN_TTL_SECONDS`, `KEYBOARD_LAYOUT` and `TURNSTILE_SITE_KEY` are config, not secrets; a `preview_id` is not a production id; a URL that does not answer is UNKNOWN, and so is a wrangler.jsonc that does not parse (never PASS). Embed search finds an iframe and skips node_modules.
 
 ## Rules
 

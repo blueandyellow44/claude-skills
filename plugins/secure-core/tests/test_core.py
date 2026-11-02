@@ -139,4 +139,114 @@ try:
 except ledger.LedgerError:
     T.expect("ledger accepts an ordinary temp path (not a key)", False)
 
+# --- Phase 8: stack detection routes nested fly / railway / supabase ---
+# A monorepo keeps fly.toml, railway.json and supabase/ one folder down; detect_stack used to read the root only,
+# so the adapters never ran (core.route.*-nested bench cases). Decoy: a client folder named supabase is not a project.
+def _stack(files):
+    d, o = T.tree(files), T.tree({})
+    subprocess.run([sys.executable, os.path.join(S, "inventory.py"), d, "--out", o], capture_output=True)
+    return set(json.load(open(os.path.join(o, "inventory.json")))["stack"])
+T.expect("P8 stack: a fly.toml under services/api/ routes to fly", "fly" in _stack({"services/api/fly.toml": 'app = "api"\n', "README.md": "# m\n"}))
+T.expect("P8 stack: a railway.json under services/mcp/ routes to railway", "railway" in _stack({"package.json": json.dumps({"private": True, "workspaces": ["services/*"]}), "services/mcp/railway.json": "{}", "services/mcp/package.json": "{}"}))
+T.expect("P8 stack: a railway.toml two levels down routes to railway", "railway" in _stack({"apps/svc/worker/railway.toml": "[deploy]\n", "README.md": "# m\n"}))
+T.expect("P8 stack: services/api/supabase/migrations/ routes to supabase", "supabase" in _stack({"services/api/supabase/migrations/0001.sql": "create table public.n (id int);\n", "services/api/main.py": "x = 1\n"}))
+T.expect("P8 stack: the Python supabase client (requirements.txt) routes to supabase", "supabase" in _stack({"services/api/requirements.txt": "supabase==2.9.0\nfastapi==0.115.0\n", "services/api/main.py": "x = 1\n"}))
+T.expect("P8 stack: `from supabase import create_client` in code routes to supabase", "supabase" in _stack({"bot/db.py": "from supabase import create_client\n"}))
+T.expect("P8 stack: a src/lib/supabase/ client folder with no config or migrations is not a Supabase project", "supabase" not in _stack({"src/lib/supabase/client.ts": "export const x = 1\n", "package.json": json.dumps({"dependencies": {"react": "19"}})}))
+T.expect("P8 stack: a fly.toml inside node_modules is not the repo's app", "fly" not in _stack({"node_modules/dep/fly.toml": 'app = "dep"\n', "README.md": "# m\n"}))
+T.expect("P8 stack: a repo with none of these detects none", not {"fly", "railway", "supabase"} & _stack({"README.md": "# m\n", "package.json": json.dumps({"dependencies": {"hono": "4"}})}))
+
+# --- Phase 9: shared helpers ---
+# names.secret_name, surface.import_names / imported / request_names / CALLER_SUPPLIED_RX and walk.block /
+# enclosing_block / function_body / decl_src replaced copies in the platform, app and ai scripts (2026-11-01).
+# Each former copy's own cases, then every disagreement between copies and the reading the merge keeps.
+import names  # noqa: E402
+import surface  # noqa: E402
+import walk  # noqa: E402
+
+# the cloudflare copy's cases (wrangler [vars] and NEXT_PUBLIC_ names)
+for _n, _want in (("STRIPE_SECRET_KEY", True), ("GITHUB_TOKEN", True), ("ANTHROPIC_API_KEY", True), ("DB_PASSWORD", True),
+                  ("SUPABASE_SERVICE_ROLE_KEY", True), ("SSH_PRIVATE_KEY", True), ("SENTRY_DSN", True), ("MAPS_KEY", True),
+                  ("KEYBOARD_LAYOUT", False), ("MAX_TOKENS", False), ("SESSION_TOKEN_TTL_SECONDS", False), ("TURNSTILE_SITE_KEY", False),
+                  ("STRIPE_PUBLISHABLE_KEY", False), ("SUPABASE_ANON_KEY", False), ("PUBLIC_SITE_URL", False), ("MODEL", False)):
+    T.expect("P9 names: secret_name(%s) is %s" % (_n, _want), names.secret_name(_n) is _want)
+# the fly copy's cases ([env] names and values)
+for _n, _want in (("SUPABASE_SERVICE_KEY", True), ("JWT_SECRET", True), ("SUPABASE_URL", False), ("TOKEN_ISSUER", False)):
+    T.expect("P9 names: secret_name(%s) is %s" % (_n, _want), names.secret_name(_n) is _want)
+T.expect("P9 names: a key-shaped VALUE under an innocent name is a secret", names.secret_name("BILLING_PROVIDER", T.fake_key("stripe", 21)) is True)
+T.expect("P9 names: a URL password in the value is a secret", names.secret_name("UPSTREAM", "postgres://app:pw@db.internal/app") is True)
+T.expect("P9 names: an innocent name with an innocent value is not", names.secret_name("BILLING_PROVIDER", "stripe") is False)
+# disagreements between the copies, and the reading kept
+T.expect("P9 names: a setting suffix cancels a strong segment (fly rule): PRIVATE_KEY_PATH", names.secret_name("PRIVATE_KEY_PATH") is False)
+T.expect("P9 names: SECRET_KEY_ID and CLIENT_SECRET_FILE are settings about a secret", not names.secret_name("SECRET_KEY_ID") and not names.secret_name("CLIENT_SECRET_FILE"))
+T.expect("P9 names: PASSWORD_MIN_LENGTH is a setting", names.secret_name("PASSWORD_MIN_LENGTH") is False)
+T.expect("P9 names: a database URL name is a secret everywhere (fly rule): DATABASE_URL, REDIS_URL, PG_DSN", all(names.secret_name(n) for n in ("DATABASE_URL", "REDIS_URL", "PG_DSN", "MONGODB_URI")))
+T.expect("P9 names: DATABASE_URL behind a browser prefix is a secret too", names.secret_name("DATABASE_URL", browser=True) is True)
+T.expect("P9 names: MAPBOX_TOKEN is public in every config (cloudflare rule)", names.secret_name("MAPBOX_TOKEN") is False and names.secret_name("MAPBOX_TOKEN", browser=True) is False)
+T.expect("P9 names: the public allowlist wins over the database rule and the vocabulary", not names.secret_name("PUBLIC_DATABASE_URL") and not names.secret_name("PUBLIC_API_KEY"))
+T.expect("P9 names: the fly words PASS, PWD, APIKEY are suffixes: DB_PASS, REDIS_PWD, STRIPE_APIKEY", all(names.secret_name(n) for n in ("DB_PASS", "REDIS_PWD", "STRIPE_APIKEY")))
+T.expect("P9 names: weak words count only as a suffix (cloudflare rule): ACCESS_TOKEN_LIFETIME, KEY_VALUE, PRIVATE_NOTES", not any(names.secret_name(n) for n in ("ACCESS_TOKEN_LIFETIME", "KEY_VALUE", "PRIVATE_NOTES", "PASS_THROUGH")))
+T.expect("P9 names: strong words count anywhere: SITE_PASSWORD, ALL_SECRETS, PASSWORD_HASH", all(names.secret_name(n) for n in ("SITE_PASSWORD", "ALL_SECRETS", "PASSWORD_HASH")))
+T.expect("P9 names: a browser Maps key is public only under a browser prefix", names.secret_name("GOOGLE_MAPS_API_KEY", browser=True) is False and names.secret_name("GOOGLE_MAPS_API_KEY") is True)
+T.expect("P9 names: case and whitespace do not matter; an empty name is not a secret", names.secret_name(" stripe_secret_key ") is True and names.secret_name("") is False and names.secret_name("___") is False)
+
+# surface: relative imports
+_imp = T.tree({"src/index.ts": "import geo from './geo.js'\nimport { lookup as find, type Opts } from './lib/index'\nconst { reserve } = require('./meter')\nexport { x } from './re'\n",
+               "src/geo.ts": "export default async function geo(q) { return fetch('https://maps.googleapis.com/x?q=' + q) }\n",
+               "src/lib/index.ts": "export function lookup(a) { return a }\n", "src/meter.js": "exports.reserve = () => {}\n", "src/re.ts": "export const x = 1\n"})
+_names = surface.import_names(_imp, "src/index.ts")
+T.expect("P9 imports: a default import maps to its LOCAL name (both callers searched the target for it)", _names.get("geo") == ("src/geo.ts", "geo"))
+T.expect("P9 imports: './geo.js' resolves to geo.ts (TypeScript ESM names the built file)", _names["geo"][0] == "src/geo.ts")
+T.expect("P9 imports: `lookup as find` maps the local name to the exported one, through /index.ts", _names.get("find") == ("src/lib/index.ts", "lookup"))
+T.expect("P9 imports: `type Opts` brings no code", "Opts" not in _names)
+T.expect("P9 imports: a destructured require resolves too", _names.get("reserve") == ("src/meter.js", "reserve"))
+T.expect("P9 imports: imported() lists the file and one level of imports and re-exports", surface.imported(_imp, "src/index.ts") == ["src/index.ts", "src/geo.ts", "src/lib/index.ts", "src/meter.js", "src/re.ts"])
+T.expect("P9 imports: an unresolvable specifier is skipped, never guessed", surface.import_names(T.tree({"a.ts": "import z from './missing'\n"}), "a.ts") == {} and surface.resolve_import(_imp, "src/index.ts", "./nope") is None)
+T.expect("P9 imports: import_names takes the caller's already-read text", surface.import_names(_imp, "src/index.ts", "import geo from './geo'\n") == {"geo": ("src/geo.ts", "geo")})
+
+# surface: caller input and the names it flows into
+_js = """const { model, max_tokens } = await c.req.json()
+const input = Schema.parse(await c.req.json())
+const q = c.req.query('q')
+let page: number = Number(c.req.query('page'))
+const { topic } = body
+const chosen = ALLOWED.includes(body.model) ? body.model : DEFAULT
+const safe = String(model).slice(0, 20)
+const res = await fetch(url, { body: JSON.stringify(x) })
+const ip = c.req.header('cf-connecting-ip')
+const ua = c.req.header('user-agent')
+const prompt = `Write about ${safe}`
+"""
+_rn = surface.request_names(_js)
+T.expect("P9 taint: destructured from the body and a schema-parsed whole value are caller input (spend rule)", {"model", "max_tokens", "input", "q"} <= _rn)
+T.expect("P9 taint: a bare conventional name (body) at the START of a value binds (spend rule)", "topic" in _rn)
+T.expect("P9 taint: a server choice that merely mentions body.model is NOT caller input", "chosen" not in _rn)
+T.expect("P9 taint: `body:` inside a fetch option is not the request body", "res" not in _rn)
+T.expect("P9 taint: a connecting-address header is never caller input; another header is", "ip" not in _rn and "ua" in _rn)
+T.expect("P9 taint: input flows one level through a tainted VALUE (ai rule)", "safe" in _rn and "prompt" in _rn)
+T.expect("P9 taint: a typed `let` binding counts", "page" in _rn)
+T.expect("P9 taint: an accessor anywhere in the value taints it (ai rule)", "x" in surface.request_names("const x = clean(c.req.query('q')) + '!'\n"))
+T.expect("P9 taint: a property named like a tainted variable does not carry taint", "y" not in surface.request_names("const { model } = await c.req.json()\nconst y = cfg.model\n"))
+T.expect("P9 taint: Python assignments from the request count", {"data", "topic"} <= surface.request_names("data = request.get_json()\ntopic = request.args.get('t')\nmodel = DEFAULT\n") and "model" not in surface.request_names("model = DEFAULT\n"))
+T.expect("P9 taint: nothing bound means an empty set", surface.request_names("const a = 1\nconst b = a + 2\n") == set())
+T.expect("P9 taint: the wider CALLER_SUPPLIED reading sees headers and context vars the entry vocabulary does not", surface.CALLER_SUPPLIED_RX.search("c.get('userId')") and surface.CALLER_SUPPLIED_RX.search("c.req.header('x-device')") and not surface.CALLER_INPUT_RX.search("c.get('userId')"))
+
+# walk: brace-balanced blocks and declarations
+T.expect("P9 blocks: block() returns the balanced block that opens at or after start", walk.block("x { a { b } c } y", 0) == "{ a { b } c }" and walk.block("f() {\n  if (a) { b }\n}\n", 3) == "{\n  if (a) { b }\n}")
+T.expect("P9 blocks: no brace means ''", walk.block("no braces here", 0) == "")
+T.expect("P9 blocks: an unbalanced block is read to the cap, never shorter (6000, the larger of the two copies)", len(walk.block("{" + "a" * 7000, 0)) == walk.BLOCK_LIMIT and walk.block("{ ab", 0, limit=3) == "{ a")
+T.expect("P9 blocks: block_end gives the index past the matching brace, None when unbalanced", walk.block_end("{ { } }", 0) == 7 and walk.block_end("{ {", 0) is None and walk.block_end("{" + "x" * 10 + "}", 0, limit=5) is None)
+_code = "export default {\n  async fetch(req, env) {\n    if (!env.ADMIN_TOKEN) return next()\n  }\n}\n"
+_pos = _code.index("return next()")
+T.expect("P9 blocks: enclosing_block() is the innermost block around pos, from the strings-blanked view", walk.enclosing_block(_code, _code, _pos) == "{\n    if (!env.ADMIN_TOKEN) return next()\n  }")
+T.expect("P9 blocks: enclosing_block() at top level is the whole text", walk.enclosing_block("const a = 1\n", "const a = 1\n", 5) == "const a = 1\n")
+T.expect("P9 blocks: function_body() for a declaration and an arrow", walk.function_body("function geo(q) { return q }", "geo") == "{ return q }" and walk.function_body("const geo = async (q) => {\n  return q\n}", "geo") == "{\n  return q\n}")
+T.expect("P9 blocks: function_decl() finds let/var too and None when absent", walk.function_decl("let f = () => 1", "f") is not None and walk.function_decl("const g = 1", "f") is None and walk.function_body("x", "f") == "")
+T.expect("P9 decl: decl_src() reads a const, a destructuring, a Python assignment, in scope order", walk.decl_src("key", "const key = `ai:${day}`") == "`ai:${day}`" and walk.decl_src("deviceId", "const { deviceId } = await c.req.json()") == "await c.req.json()" and walk.decl_src("n", "n = request.args['n']") == "request.args['n']")
+T.expect("P9 decl: the first scope with a binding wins; none means ''", walk.decl_src("k", "const k = inner", "const k = outer") == "inner" and walk.decl_src("k", "const j = 1") == "" and walk.decl_src("k", "if (k == 2) {}") == "")
+
+# --- the version every ledger reports matches the plugin manifest (it sat at 0.3.0 through 0.5.2, found 2026-11-01) ---
+_pj = json.load(open(os.path.join(HERE, "..", ".claude-plugin", "plugin.json")))
+T.expect("ledger.SUITE_VERSION equals secure-core's plugin.json version", ledger.SUITE_VERSION == _pj["version"], "%s vs %s" % (ledger.SUITE_VERSION, _pj["version"]))
+
 T.finish()

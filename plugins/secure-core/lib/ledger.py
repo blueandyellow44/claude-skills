@@ -21,7 +21,7 @@ import sys
 
 STATUSES = ("PASS", "FAIL", "UNKNOWN")
 SEVERITIES = ("critical", "high", "medium", "low", "info")
-SUITE_VERSION = "0.2.3"
+SUITE_VERSION = "0.5.5"
 
 # Values that look like credentials. Used to refuse writing them anywhere: a
 # check must report a location, never a value. Patterns match key SHAPES only.

@@ -111,7 +111,9 @@ T.status_is("fetch good", c, "fetch.data-url", "PASS", out)
 mixed = dict(GOOD)
 mixed["src/other.ts"] = "export async function grab(item) { return fetch(item.image) }\n"
 rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(mixed))
-T.status_is("fetch guard exists but a raw site remains", c, "fetch.data-url", "UNKNOWN", out)
+# Phase 8 (bench case fetch.data-url.guard-exists-one-raw-site): a raw fetch beside a guard FUNCTION it does not call is a FAIL, not UNKNOWN
+T.status_is("fetch guard function exists but a raw site does not call it", c, "fetch.data-url", "FAIL", out)
+T.expect("fetch: the FAIL names the uncalled guard", "do not call it" in c.get("fetch.data-url", {}).get("detail", ""), out[-300:])
 
 rc, c, out = T.run(os.path.join(S, "check_spend.py"), bad)
 for cid in ("spend.cap.anthropic", "spend.unset-cap", "spend.open-proxy", "spend.per-client", "spend.llm-params"):
@@ -250,6 +252,8 @@ s, out = st("check_spend.py", {"src/llm.ts": "export async function ask(){ retur
 T.expect("audit 2: JSX text is not a spend cap", s == "FAIL", out[-200:])
 s, out = st("check_spend.py", {"src/a.ts": "const GIFT_LIMITS = { dailyUsdCap: Number.MAX_SAFE_INTEGER }\nexport async function f(){ return fetch('https://api.anthropic.com/v1/messages') }\n"}, "spend.unset-cap")
 T.expect("audit 2: a cap set to MAX_SAFE_INTEGER is unlimited", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"src/generated/assets.ts": 'export const CARD_HTML = "<script>if(!Number.isSafeInteger(s)){issues.push({code:\\"too_big\\",maximum:Number.MAX_SAFE_INTEGER})}</script>";\nexport async function f(){ return fetch(\'https://api.anthropic.com/v1/messages\') }\nconst DAILY_SPEND_CAP = 1\n'}, "spend.unset-cap")
+T.expect("2026-10-15: MAX_SAFE_INTEGER inside a string literal (a bundled card) is not a cap", s != "FAIL", out[-200:])
 two = {"src/translator.ts": "export async function tr(){ return fetch('https://api.anthropic.com/v1/messages') }\n",
        "src/scorer.ts": "import { DAILY_SPEND_CAP } from './caps'\nexport async function sc(){ return fetch('https://api.anthropic.com/v1/messages') }\n",
        "src/caps.ts": "export const DAILY_SPEND_CAP = 5\n"}
@@ -280,5 +284,478 @@ T.expect("an `import type` is not a call path to a cap", s == "FAIL", out[-200:]
 
 s, out = st("check_spend.py", {"src/a.ts": "app.get('/t', async (c) => { const q = c.req.query('q').slice(0, 9); return fetch(`https://api.anthropic.com/v1/x?q=${q}`) })\nconst limiter = new ModelCallLimiter(4)\nif (res.status !== 429) retry()\n"}, "spend.per-client")
 T.expect("a concurrency limiter and an upstream 429 comparison are not per-client limits", s == "FAIL", out[-200:])
+
+# ---------- auth-gate-check and ai-route-metering (2026-10-13 account audit fixes) ----------
+AG = os.path.join(S, "check_auth_gates.py")
+MT = os.path.join(S, "check_metering.py")
+W_ROUTED = 'name = "w"\nmain = "src/index.ts"\nroutes = [{ pattern = "coach.example.com", custom_domain = true }]\n'
+W_PLAIN = 'name = "w"\nmain = "src/index.ts"\n'
+
+def ag(files, cid):
+    rc, c, out = T.run(AG, T.tree(files))
+    return c.get(cid, {}), out
+
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "app.use('/api/*', async (c, next) => {\n  if (!c.env.BETTER_AUTH_SECRET) return next()\n  const s = await getSession(c)\n  if (!s) return c.json({ error: 'unauthorized' }, 401)\n  await next()\n})\n"}, "auth.off-switch")
+T.expect("auth: `if (!c.env.SECRET) return next()` is an off-switch (FAIL high)", r.get("status") == "FAIL" and r.get("severity") == "high" and "BETTER_AUTH_SECRET" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "if (!env.AUTH_SECRET) {\n  return await next()\n}\n"}, "auth.off-switch")
+T.expect("auth: the braced, awaited form is an off-switch", r.get("status") == "FAIL", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/turnstile.ts": "export const turnstile = { enabled: !!env.TURNSTILE_SECRET_KEY, verify }\n"}, "auth.off-switch")
+T.expect("auth: `enabled: !!env.SECRET` around a verifier is an off-switch", r.get("status") == "FAIL", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/billing.ts": "export async function hook(req, env) {\n  if (env.STRIPE_WEBHOOK_SECRET) {\n    event = stripe.webhooks.constructEvent(body, sig, env.STRIPE_WEBHOOK_SECRET)\n  }\n  grant(event)\n}\n"}, "auth.off-switch")
+T.expect("auth: a verification that runs only `if (env.SECRET)` is an off-switch", r.get("status") == "FAIL" and "verification runs only" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "app.use('/api/*', async (c, next) => {\n  if (!c.env.BETTER_AUTH_SECRET) {\n    if (c.env.NODE_ENV === 'test') return next()\n    return c.json({ error: 'auth not configured' }, 503)\n  }\n  await next()\n})\nif (env.ANTHROPIC_API_KEY) { await fetch('https://api.anthropic.com/v1/messages') }\n"}, "auth.off-switch")
+T.expect("auth: 503 on a missing secret (test-env bypass only) passes; a key-gated API call is not an off-switch", r.get("status") == "PASS", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "// if (!c.env.SECRET) return next()\napp.use('*', (c, next) => next())\n"}, "auth.off-switch")
+T.expect("auth: an off-switch in a comment does not count", r.get("status") == "PASS", out[-200:])
+
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": "export const requireUser = async (c, next) => {\n  const email = c.req.header('cf-access-authenticated-user-email')\n  if (email !== c.env.ALLOWED_EMAIL) return c.json({ error: 'no' }, 403)\n  await next()\n}\n"}, "auth.header-identity")
+T.expect("auth: cf-access-authenticated-user-email trusted with no JWT check fails high", r.get("status") == "FAIL" and r.get("severity") == "high", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth-stub.ts": "c.set('teacherId', c.req.header('X-Teacher-Id') ?? 'teacher_dev')\n"}, "auth.header-identity")
+T.expect("auth: an X-Teacher-Id identity fails", r.get("status") == "FAIL", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/identity.ts": "const u = request.headers.get('x-user-id')\n"}, "auth.header-identity")
+T.expect("auth: headers.get('x-user-id') fails", r.get("status") == "FAIL", out[-200:])
+COACH = """import { createRemoteJWKSet, jwtVerify } from 'jose'
+const ACCESS_TEAM = 'https://team.cloudflareaccess.com'
+const JWKS = createRemoteJWKSet(new URL(`${ACCESS_TEAM}/cdn-cgi/access/certs`))
+app.use('/api/*', async (c, next) => {
+  const token = c.req.header('Cf-Access-Jwt-Assertion')
+  if (!token) return c.json({ error: 'unauthorized' }, 401)
+  const { payload } = await jwtVerify(token, JWKS, { issuer: ACCESS_TEAM, audience: c.env.ACCESS_AUD, algorithms: ['RS256'] })
+  const email = typeof payload.email === 'string' ? payload.email : ''
+  if (email !== c.env.ALLOWED_EMAIL) return c.json({ error: 'unauthorized' }, 401)
+  await next()
+})
+"""
+r, out = ag({"wrangler.toml": W_ROUTED, "src/index.ts": COACH, "src/legacy.ts": "const e = c.req.header('cf-access-authenticated-user-email')\n"}, "auth.header-identity")
+T.expect("auth: a header read with JWT verification in the tree passes (reference, not proof)", r.get("status") == "PASS" and "reference" in r.get("detail", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/index.ts": COACH}, "auth.access-jwt")
+T.expect("auth: jwtVerify with issuer and audience passes", r.get("status") == "PASS" and "index.ts:7" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/index.ts": "app.get('/api/x', (c) => c.json({}))\n"}, "auth.access-jwt")
+T.expect("auth: a routed Worker with no assertion reference is UNKNOWN, never PASS", r.get("status") == "UNKNOWN" and "cannot see whether Access fronts this host" in r.get("reason", ""), out[-200:])
+rc, c, out = T.run(AG, T.tree({"wrangler.toml": 'name = "w"\nmain = "src/index.ts"\n# routes = [{ pattern = "x.example.com" }]\n', "src/index.ts": "app.get('/x', (c) => c.text('x'))\n"}))
+T.expect("auth: a wrangler config with no live route (only a commented one) emits no access-jwt check", "auth.access-jwt" not in c, str(sorted(c)))
+r, out = ag({"wrangler.toml": W_ROUTED, "src/index.ts": "const token = c.req.header('Cf-Access-Jwt-Assertion')\nif (!token) return c.json({}, 401)\n"}, "auth.access-jwt")
+T.expect("auth: an assertion read without jwtVerify fails high", r.get("status") == "FAIL" and r.get("severity") == "high", out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/index.ts": "import { jwtVerify } from 'jose'\nconst t = c.req.header('Cf-Access-Jwt-Assertion')\nconst { payload } = await jwtVerify(t, JWKS)\n"}, "auth.access-jwt")
+T.expect("auth: jwtVerify without issuer and audience fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium", out[-200:])
+
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": "import { betterAuth } from 'better-auth'\nexport const auth = betterAuth({\n  emailAndPassword: { enabled: true },\n  database: db,\n})\n"}, "auth.open-signup")
+T.expect("auth: better-auth email sign-up with no disableSignUp and no create hook fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": "import { betterAuth } from 'better-auth'\nexport const auth = betterAuth({\n  emailAndPassword: { enabled: true, disableSignUp: true },\n  databaseHooks: { user: { create: { before: async (user) => { if (user.email !== env.ALLOWED_EMAIL) throw new APIError('FORBIDDEN') } } } },\n})\n"}, "auth.open-signup")
+T.expect("auth: disableSignUp plus a user.create.before hook passes", r.get("status") == "PASS", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": "import { betterAuth } from 'better-auth'\nexport const auth = betterAuth({ emailAndPassword: { enabled: false } })\n"}, "auth.open-signup")
+T.expect("auth: email sign-up disabled emits no open-signup finding", not r, out[-200:])
+rc, c, out = T.run(AG, T.tree({"wrangler.toml": W_ROUTED, "src/index.ts": COACH, "src/auth.ts": "import { betterAuth } from 'better-auth'\nexport const auth = betterAuth({ emailAndPassword: { enabled: true, disableSignUp: true } })\n"}))
+T.expect("auth clean tree: every check PASS, none UNKNOWN", rc == 0 and c and all(v["status"] == "PASS" for v in c.values()) and {"auth.off-switch", "auth.header-identity", "auth.access-jwt", "auth.open-signup"} <= set(c), out[-300:])
+
+def mt(files, cid):
+    rc, c, out = T.run(MT, T.tree(files))
+    return c.get(cid, {}), out
+
+RL = 'name = "w"\nmain = "src/index.ts"\n[[ratelimits]]\nname = "AI_LIMITER"\nnamespace_id = "1001"\nsimple = { limit = 20, period = 60 }\n'
+NORL = 'name = "w"\nmain = "src/index.ts"\n'
+r, out = mt({"wrangler.toml": RL, "src/a.ts": "export async function ask(env, prompt) {\n  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' })\n  return r.json()\n}\n"}, "meter.anthropic")
+T.expect("meter: a paid call with no counter in its function or its callers fails high", r.get("status") == "FAIL" and r.get("severity") == "high" and "a.ts:2" in r.get("evidence", ""), out[-200:])
+r, out = mt({"wrangler.toml": RL, "src/a.ts": "export async function ask(env, prompt) {\n  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' })\n  const n = Number(await env.CACHE.get(`ai:count:${today}`)) || 0\n  await env.CACHE.put(`ai:count:${today}`, String(n + 1))\n  return r.json()\n}\n"}, "meter.anthropic")
+T.expect("meter: a counter touched only after the call fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium" and "after the call" in r.get("evidence", ""), out[-200:])
+r, out = mt({"wrangler.toml": RL, "src/a.ts": "app.post('/gen', async (c) => {\n  const teacherId = c.req.header('x-teacher-id')\n  const used = Number(await c.env.CACHE.get(`usage:${teacherId}`)) || 0\n  if (used >= 50) return c.json({}, 429)\n  await c.env.CACHE.put(`usage:${teacherId}`, String(used + 1))\n  const r = await fetch('https://api.anthropic.com/v1/messages')\n  return c.json(await r.json())\n})\n"}, "meter.anthropic")
+T.expect("meter: a counter keyed only on a header-supplied id fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium" and "caller-supplied" in r.get("evidence", ""), out[-200:])
+r, out = mt({"wrangler.toml": NORL, "src/a.ts": "export async function ask(env) {\n  await reserveAiBudget(env)\n  return fetch('https://api.anthropic.com/v1/messages')\n}\n"}, "meter.ratelimit-binding")
+T.expect("meter: no [[ratelimits]] block fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium", out[-200:])
+GOOD_M = {"wrangler.toml": RL,
+          "src/lib/ai-guard.ts": "export async function reserveAiBudget(env) {\n  const key = `ai:count:${new Date().toISOString().slice(0, 10)}`\n  const n = Number(await env.CACHE.get(key)) || 0\n  if (n >= 150) throw new BudgetExhaustedError(n, 150)\n  await env.CACHE.put(key, String(n + 1))\n}\n",
+          "src/routes/classical.ts": "import { reserveAiBudget } from '../lib/ai-guard'\nasync function callClaudeJson(prompt: string, env: Env): Promise<{ chart?: string; source?: string }> {\n  await reserveAiBudget(env)\n  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' })\n  return res.json()\n}\n",
+          "src/routes/sdk.ts": "import Anthropic from '@anthropic-ai/sdk'\nexport async function feedback(env) {\n  const key = `feedback:count:${day}`\n  const current = Number(await env.STATE.get(key)) || 0\n  if (current >= 40) return null\n  await env.STATE.put(key, String(current + 1))\n  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })\n  return client.messages.create({ model: MODEL, max_tokens: 400, messages: [] })\n}\n",
+          "src/routes/lookup.ts": "import { reserveDailyBudget } from '../lib/ai-guard'\nasync function llm(env, q) { return fetch('https://api.openai.com/v1/chat/completions') }\napp.get('/lookup', async (c) => {\n  const { success } = await c.env.AI_LIMITER.limit({ key: c.req.header('cf-connecting-ip') ?? 'anon' })\n  if (!success) return c.json({}, 429)\n  const b = await reserveDailyBudget(c.env, 'lookup', 50)\n  if (!b.ok) return c.json({}, 429)\n  return c.json(await llm(c.env, c.req.query('q')))\n})\n"}
+rc, c, out = T.run(MT, T.tree(GOOD_M))
+T.expect("meter good: a reservation above the call, an SDK call after a day-keyed KV counter, and a route-level reservation before a helper all PASS",
+         rc == 0 and c.get("meter.anthropic", {}).get("status") == "PASS" and c.get("meter.openai", {}).get("status") == "PASS" and c.get("meter.ratelimit-binding", {}).get("status") == "PASS", out[-400:])
+T.expect("meter good: the ratelimit PASS says the binding is best-effort and the counter is the hard cap", "best-effort" in c.get("meter.ratelimit-binding", {}).get("detail", "") and "hard cap" in c["meter.ratelimit-binding"]["detail"])
+r, out = mt({"wrangler.toml": RL, "src/a.ts": "// await reserveAiBudget(env) before the call\nexport async function ask(env) { return fetch('https://api.anthropic.com/v1/messages') }\n"}, "meter.anthropic")
+T.expect("meter: a reservation in a comment is not a counter", r.get("status") == "FAIL", out[-200:])
+rc, c, out = T.run(MT, T.tree({"wrangler.toml": RL, "src/a.ts": "export async function h() { return fetch('https://example.org/') }\n"}))
+T.expect("meter: no paid-model call emits meter.none PASS only", list(c) == ["meter.none"] and c["meter.none"]["status"] == "PASS", str(sorted(c)))
+r, out = mt({"wrangler.toml": RL, "package.json": json.dumps({"dependencies": {"openai": "4"}}), "src/a.ts": "import OpenAI from 'openai'\nconst client = new OpenAI()\nexport async function ask(q) { return client.chat.completions.create({ model: 'gpt-5', messages: [{ role: 'user', content: q }] }) }\n"}, "meter.openai")
+T.expect("meter: an OpenAI SDK call with no counter fails high", r.get("status") == "FAIL" and r.get("severity") == "high", out[-200:])
+r, out = mt({"wrangler.toml": RL, "src/a.ts": "export async function say(env, text) {\n  const used = Number(await env.CACHE.get(`tts:count:${day}`)) || 0\n  if (used >= 20) return null\n  await env.CACHE.put(`tts:count:${day}`, String(used + 1))\n  return fetch('https://api.elevenlabs.io/v1/text-to-speech/x', { method: 'POST', body: text })\n}\n"}, "meter.elevenlabs")
+T.expect("meter: an ElevenLabs call after a day-keyed counter passes", r.get("status") == "PASS", out[-200:])
+
+# --- Phase 8: spend / auth / metering regressions ---
+# One fixture per former benchmark known miss (bench/cases/secure_app_spend_auth.py, 2026-11-01), in the
+# bench case's shape; every new FAIL-capable path is shown FAILing on its bad fixture and quiet on a decoy.
+PAID = "export async function ask(env, prompt){ return fetch('https://api.anthropic.com/v1/messages') }\n"
+# spend.unset-cap: a string default of "inf" through float()/Number() is an unlimited cap
+s, out = st("check_spend.py", {"app/main.py": 'import os\nimport anthropic\nclient = anthropic.Anthropic()\nDAILY_CAP_USD = float(os.environ.get("DAILY_CAP_USD", "inf"))\n'}, "spend.unset-cap")
+T.expect("P8 spend: float(os.environ.get(CAP, \"inf\")) is an unlimited fallback", s == "FAIL" and "inf" in out, out[-200:])
+s, out = st("check_spend.py", {"src/a.ts": "const limit = Number(env.DAILY_LIMIT ?? 'Infinity')\n" + PAID}, "spend.unset-cap")
+T.expect("P8 spend: Number(env.LIMIT ?? 'Infinity') is an unlimited fallback", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"app/main.py": 'import os\nimport anthropic\nPORT = int(os.environ.get("PORT", "8080"))\nDAILY_CAP_USD = float(os.environ.get("DAILY_CAP_USD", "0"))\n'}, "spend.unset-cap")
+T.expect("P8 spend: a non-cap env default and a cap defaulting to 0 are not unlimited", s == "PASS", out[-200:])
+# spend.unset-cap: NaN passes a "within" guard; the same test before an "over" comparison pauses
+s, out = st("check_spend.py", {"src/limits.ts": "export function withinDailyLimit(env, used) {\n  const limit = Number(env.AI_DAILY_LIMIT)\n  return Number.isNaN(limit) || used < limit\n}\n" + PAID}, "spend.unset-cap")
+T.expect("P8 spend: `isNaN(limit) || used < limit` lets an unset limit through", s == "FAIL" and "unparseable" in out, out[-200:])
+s, out = st("check_spend.py", {"src/spend.ts": "export async function overDailySpendCap(env) {\n  const cap = Number(env.DAILY_SPEND_CAP_USD)\n  if (!Number.isFinite(cap) || cap <= 0) return true\n  return false\n}\n" + PAID}, "spend.unset-cap")
+T.expect("P8 spend: `!isFinite(cap) || cap <= 0) return true` pauses and passes", s == "PASS", out[-200:])
+# spend.open-proxy: the proxy split across two files, the bound in the helper, and a helper fed no request input
+GEO = "export async function reverseGeocode(lat, lng, env) {\n  const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${env.MAPS_KEY}`)\n  return r.json()\n}\n"
+split = {"src/geo.ts": GEO, "src/index.ts": "import { reverseGeocode } from './geo'\napp.get('/api/reverse', async (c) => c.json(await reverseGeocode(c.req.query('lat') ?? '', c.req.query('lng') ?? '', c.env)))\n"}
+s, out = st("check_spend.py", split, "spend.open-proxy")
+T.expect("P8 spend: request input handed to an imported helper that fetches a third party is an open proxy", s == "FAIL" and "via src/geo.ts:reverseGeocode" in out, out[-200:])
+bounded = dict(split, **{"src/geo.ts": "import { isInServiceArea } from './area'\n" + GEO.replace("  const r =", "  if (!isInServiceArea(Number(lat), Number(lng))) throw new Error('outside the service area')\n  const r =")})
+s, out = st("check_spend.py", bounded, "spend.open-proxy")
+T.expect("P8 spend: a bound inside the helper covers the split proxy", s == "PASS", out[-200:])
+rc, c, out = T.run(os.path.join(S, "check_spend.py"), T.tree({"src/geo.ts": GEO, "src/index.ts": "import { reverseGeocode } from './geo'\napp.get('/api/home', async (c) => { const who = c.req.query('who'); return c.json(await reverseGeocode('10.1', '20.1', c.env)) })\n"}))
+T.expect("P8 spend: a helper called with fixed values forwards no request input (no proxy finding)", c.get("spend.open-proxy", {}).get("status") != "FAIL", out[-200:])
+# spend.per-client: a limiter keyed on a caller-chosen value is no limiter
+s, out = st("check_spend.py", {"wrangler.toml": "[[ratelimits]]\nname = \"AI_LIMITER\"\n", "src/index.ts": "app.post('/api/hint', async (c) => {\n  const { userId, question } = await c.req.json()\n  const { success } = await c.env.AI_LIMITER.limit({ key: String(userId) })\n  if (!success) return c.json({ error: 'slow down' }, 429)\n  return c.json(await fetch('https://api.anthropic.com/v1/messages'))\n})\n"}, "spend.per-client")
+T.expect("P8 spend: a limiter keyed on a body userId fails", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"src/index.ts": "app.post('/api/hint', async (c) => {\n  const uid = c.req.query('userId')\n  if (!limiter.hit(uid)) return c.json({ error: 'slow down' }, 429)\n  return c.json(await fetch('https://api.anthropic.com/v1/messages'))\n})\n"}, "spend.per-client")
+T.expect("P8 spend: a limiter keyed on a query userId fails", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"src/index.ts": "app.post('/api/ask', async (c) => {\n  const clientIp = c.req.header('cf-connecting-ip') ?? 'unknown'\n  if (!allowClient(clientIp)) return c.json({ error: 'too many requests' }, 429)\n  const { q } = await c.req.json()\n  return c.json(await fetch('https://api.anthropic.com/v1/messages'))\n})\n"}, "spend.per-client")
+T.expect("P8 spend: a limiter keyed on cf-connecting-ip passes", s == "PASS", out[-200:])
+# spend.llm-params: a schema-parsed copy of the request is still the request
+zod = {"package.json": json.dumps({"dependencies": {"openai": "4", "zod": "3"}}),
+       "src/index.ts": "import OpenAI from 'openai'\nimport { z } from 'zod'\nconst Req = z.object({ model: z.string(), max_tokens: z.number() })\napp.post('/api/draft', async (c) => {\n  const input = Req.parse(await c.req.json())\n  const client = new OpenAI()\n  return c.json(await client.chat.completions.create({ model: input.model, max_tokens: input.max_tokens, messages: [] }))\n})\n"}
+s, out = st("check_spend.py", zod, "spend.llm-params")
+T.expect("P8 spend: zod-parsed input.model and input.max_tokens are caller-chosen", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"src/index.ts": "app.post('/api/draft', async (c) => {\n  const parsed = Req.safeParse(await c.req.json())\n  return c.json(await fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: parsed.data.max_tokens }) }))\n})\n"}, "spend.llm-params")
+T.expect("P8 spend: safeParse(...).data.max_tokens is caller-chosen", s == "FAIL", out[-200:])
+s, out = st("check_spend.py", {"src/index.ts": "const ALLOWED = ['claude-haiku-4-5']\napp.post('/api/chat', async (c) => {\n  const body = await c.req.json()\n  const chosen = ALLOWED.includes(body.model) ? body.model : ALLOWED[0]\n  const budget = Math.min(Number(body.max_tokens) || 512, 1024)\n  return c.json(await fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: chosen, max_tokens: budget }) }))\n})\n"}, "spend.llm-params")
+T.expect("P8 spend: an allow-listed model and a clamped max_tokens pass", s == "PASS", out[-200:])
+
+# auth.off-switch: the secret destructured or aliased into a local; the guard must be auth-shaped
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "app.use('/api/admin/*', async (c, next) => {\n  const { ADMIN_TOKEN } = c.env\n  if (!ADMIN_TOKEN) return next()\n  return bearerAuth({ token: ADMIN_TOKEN })(c, next)\n})\n"}, "auth.off-switch")
+T.expect("P8 auth: `const { ADMIN_TOKEN } = c.env; if (!ADMIN_TOKEN) return next()` is an off-switch", r.get("status") == "FAIL" and "ADMIN_TOKEN" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/index.ts": "app.use('/api/*', async (c, next) => {\n  const token = c.env.SESSION_SECRET\n  if (!token) return next()\n  const s = await getSession(c, token)\n  if (!s) return c.json({}, 401)\n  await next()\n})\n"}, "auth.off-switch")
+T.expect("P8 auth: an aliased secret (`const token = env.SESSION_SECRET`) is followed", r.get("status") == "FAIL" and "SESSION_SECRET" in r.get("evidence", ""), out[-200:])
+BEACON = "export const pageviews = async (c, next) => {\n  if (!c.env.%s) return next()\n  c.executionCtx.waitUntil(fetch('https://plausible.example.net/api/event', { method: 'POST', headers: { authorization: `Bearer ${c.env.%s}` } }))\n  await next()\n}\n"
+r, out = ag({"wrangler.toml": W_PLAIN, "src/analytics.ts": BEACON % ("ANALYTICS_TOKEN", "ANALYTICS_TOKEN")}, "auth.off-switch")
+T.expect("P8 auth: a skipped analytics beacon is a feature flag, not an auth off-switch", r.get("status") == "PASS", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/analytics.ts": BEACON % ("AUTH_TOKEN", "AUTH_TOKEN")}, "auth.off-switch")
+T.expect("P8 auth: the same skip on an auth-named secret still fails", r.get("status") == "FAIL", out[-200:])
+# auth.header-identity: the auth-proxy header family
+r, out = ag({"package.json": json.dumps({"dependencies": {"express": "4"}}), "lib/user.js": "function currentUser(req) {\n  const email = req.headers['x-forwarded-email']\n  return email ? { email } : null\n}\nmodule.exports = { currentUser }\n"}, "auth.header-identity")
+T.expect("P8 auth: identity from x-forwarded-email with no verification fails", r.get("status") == "FAIL" and "x-forwarded-email" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/id.ts": "const u = request.headers.get('Remote-User')\n"}, "auth.header-identity")
+T.expect("P8 auth: identity from Remote-User fails", r.get("status") == "FAIL", out[-200:])
+# auth.access-jwt: decodeJwt is not verification; jose imported but never called is not verification; options in a const count
+DECODE = "import { decodeJwt } from 'jose'\nconst ACCESS = { issuer: 'https://t.cloudflareaccess.com', audience: 'aud' }\nexport const requireAccess = async (c, next) => {\n  const token = c.req.header('Cf-Access-Jwt-Assertion')\n  if (!token) return c.json({}, 401)\n  const claims = decodeJwt(token)\n  if (claims.iss !== ACCESS.issuer) return c.json({}, 401)\n  await next()\n}\n"
+r, out = ag({"wrangler.toml": W_ROUTED, "src/access.ts": DECODE}, "auth.access-jwt")
+T.expect("P8 auth: decodeJwt with a hand-compared iss and aud fails high and names decodeJwt", r.get("status") == "FAIL" and r.get("severity") == "high" and "decodeJwt" in r.get("evidence", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/access.ts": "import * as jose from 'jose'\nconst token = c.req.header('Cf-Access-Jwt-Assertion')\n"}, "auth.access-jwt")
+T.expect("P8 auth: importing jose without a verify call is not verification", r.get("status") == "FAIL" and r.get("severity") == "high", out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/access.ts": "import { jwtVerify } from 'jose'\nconst opts = { issuer: TEAM, audience: AUD }\nconst t = c.req.header('Cf-Access-Jwt-Assertion')\nconst { payload } = await jwtVerify(t, JWKS, opts)\n"}, "auth.access-jwt")
+T.expect("P8 auth: jwtVerify with issuer and audience in an options const passes", r.get("status") == "PASS", out[-200:])
+r, out = ag({"wrangler.toml": W_ROUTED, "src/access.ts": "import { jwtVerify } from 'jose'\nconst unrelated = { issuer: 'x', audience: 'y' }\nconst t = c.req.header('Cf-Access-Jwt-Assertion')\nconst { payload } = await jwtVerify(t, JWKS)\n"}, "auth.access-jwt")
+T.expect("P8 auth: issuer and audience elsewhere in the file do not count for a bare jwtVerify", r.get("status") == "FAIL" and r.get("severity") == "medium", out[-200:])
+# auth.open-signup: a nested option before enabled; a hook built in another file; a Worker-level refusal that fails closed
+BA = "import { betterAuth } from 'better-auth'\n%s\nexport const auth = betterAuth({\n  emailAndPassword: {\n    password: { hash: hashPw, verify: verifyPw },\n    enabled: true,\n  },\n%s})\n"
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": BA % ("", "")}, "auth.open-signup")
+T.expect("P8 auth: open sign-up with a nested password: {...} option before enabled: true fails", r.get("status") == "FAIL", out[-200:])
+HOOKS = "export function inviteOnlyHooks(env) {\n  return { user: { create: { before: async (user) => { if (!(await invited(env, user.email))) throw new APIError('FORBIDDEN'); return { data: user } } } } }\n}\n"
+r, out = ag({"wrangler.toml": W_PLAIN, "src/hooks.ts": HOOKS, "src/auth.ts": BA % ("import { inviteOnlyHooks } from './hooks'", "  databaseHooks: inviteOnlyHooks(env),\n")}, "auth.open-signup")
+T.expect("P8 auth: a user.create.before hook built in an imported file closes sign-up", r.get("status") == "PASS", out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/hooks.ts": "export function inviteOnlyHooks(env) {\n  return { session: { create: { after: async () => {} } } }\n}\n", "src/auth.ts": BA % ("import { inviteOnlyHooks } from './hooks'", "  databaseHooks: inviteOnlyHooks(env),\n")}, "auth.open-signup")
+T.expect("P8 auth: an imported hook object without user.create.before still fails", r.get("status") == "FAIL", out[-200:])
+WORKER = "import { createAuth } from './auth'\nfunction inviteOk(req, env) {\n  if (!env.INVITE_SECRET) return %s\n  return req.headers.get('x-invite-secret') === env.INVITE_SECRET\n}\nexport default {\n  async fetch(req, env) {\n    const path = new URL(req.url).pathname.toLowerCase()\n    if (path.includes('sign-up') && !inviteOk(req, env)) {\n      return Response.json({ error: 'invite only' }, { status: 403 })\n    }\n    return createAuth(env).handler(req)\n  },\n}\n"
+BA_FN = "import { betterAuth } from 'better-auth'\nexport function createAuth(env) {\n  return betterAuth({ emailAndPassword: { enabled: true }, secret: env.BETTER_AUTH_SECRET })\n}\n"
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": BA_FN, "src/worker.ts": WORKER % "false"}, "auth.open-signup")
+T.expect("P8 auth: a Worker entry refusing /api/auth/sign-up* (fails closed) passes with a reference detail", r.get("status") == "PASS" and "worker.ts" in r.get("evidence", "") and "reference" in r.get("detail", ""), out[-200:])
+r, out = ag({"wrangler.toml": W_PLAIN, "src/auth.ts": BA_FN, "src/worker.ts": WORKER % "true"}, "auth.open-signup")
+T.expect("P8 auth: the same refusal whose helper returns true when the secret is unset fails open and FAILs", r.get("status") == "FAIL", out[-200:])
+
+# meter: a name containing Daily is not a counter; a body-destructured key is caller-supplied
+r, out = mt({"wrangler.toml": RL, "src/digest.ts": "export function buildDailyDigest(items) { return items.slice(0, 20).join('\\n') }\n",
+             "src/index.ts": "import { buildDailyDigest } from './digest'\napp.post('/api/digest', async (c) => {\n  const { items } = await c.req.json()\n  const digest = buildDailyDigest(items)\n  const r = await fetch('https://api.anthropic.com/v1/messages')\n  return c.json(await r.json())\n})\n"}, "meter.anthropic")
+T.expect("P8 meter: buildDailyDigest() above the call is not a reservation (FAIL high)", r.get("status") == "FAIL" and r.get("severity") == "high", out[-200:])
+r, out = mt({"wrangler.toml": RL, "src/index.ts": "app.post('/api/quiz', async (c) => {\n  const { deviceId, topic } = await c.req.json()\n  const day = new Date().toISOString().slice(0, 10)\n  const used = Number(await c.env.USAGE.get(`quota:${deviceId}:${day}`)) || 0\n  if (used >= 30) return c.json({}, 429)\n  await c.env.USAGE.put(`quota:${deviceId}:${day}`, String(used + 1))\n  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/x:generateContent')\n  return c.json(await r.json())\n})\n"}, "meter.google-gemini")
+T.expect("P8 meter: a counter keyed on a body-destructured deviceId fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium" and "caller-supplied" in r.get("evidence", ""), out[-200:])
+# meter: Python defs are functions; a Redis incr or a reserve_* call before the call is a counter
+PY_RESERVE = "import datetime\n\nDAILY_CALLS = 400\n\n\ndef reserve_daily_call(r) -> bool:\n    key = \"llm:count:\" + datetime.date.today().isoformat()\n    n = r.incr(key)\n    return n <= DAILY_CALLS\n"
+PY_MAIN = "import httpx\nimport redis\nfrom fastapi import FastAPI, HTTPException, Request\nfrom app.meter import reserve_daily_call\n\napp = FastAPI()\nstore = redis.Redis()\n\n\n@app.post(\"/api/summarize\")\nasync def summarize(req: Request):\n%s    body = await req.json()\n    r = httpx.post(\"https://api.openai.com/v1/chat/completions\", json={\"model\": \"gpt-4o-mini\"})\n    return r.json()\n"
+r, out = mt({"requirements.txt": "fastapi\nredis\n", "app/meter.py": PY_RESERVE, "app/main.py": PY_MAIN % "    if not reserve_daily_call(store):\n        raise HTTPException(status_code=429)\n"}, "meter.openai")
+T.expect("P8 meter: a FastAPI def that reserves a Redis daily counter before the call passes", r.get("status") == "PASS", out[-200:])
+r, out = mt({"requirements.txt": "fastapi\nredis\n", "app/main.py": PY_MAIN % "    key = \"llm:count:\" + day\n    if store.incr(key) > 400:\n        raise HTTPException(status_code=429)\n"}, "meter.openai")
+T.expect("P8 meter: a Redis incr on a count key inside the def is a counter", r.get("status") == "PASS", out[-200:])
+r, out = mt({"requirements.txt": "fastapi\n", "app/main.py": PY_MAIN % ""}, "meter.openai")
+T.expect("P8 meter: a Python def with no counter still fails high, naming the def (not 'top level')", r.get("status") == "FAIL" and r.get("severity") == "high" and "summarize" in r.get("evidence", "") and "top level" not in r.get("evidence", ""), out[-200:])
+# meter.ratelimit-binding: declared is not called
+UNCALLED = "const DAILY = 300\napp.post('/api/tagline', async (c) => {\n  const n = Number(await c.env.USAGE.get(`ai:count:${day}`)) || 0\n  if (n >= DAILY) return c.json({}, 429)\n  await c.env.USAGE.put(`ai:count:${day}`, String(n + 1))\n  return c.json(await fetch('https://api.openai.com/v1/chat/completions'))\n})\n"
+r, out = mt({"wrangler.toml": RL, "src/index.ts": UNCALLED}, "meter.ratelimit-binding")
+T.expect("P8 meter: a [[ratelimits]] binding declared but never .limit()ed fails medium", r.get("status") == "FAIL" and r.get("severity") == "medium" and "AI_LIMITER" in r.get("evidence", ""), out[-200:])
+r, out = mt({"wrangler.jsonc": '{\n  "name": "t",\n  "ratelimits": [{ "name": "AI_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }]\n}\n',
+             "src/index.ts": UNCALLED.replace("  const n =", "  const { success } = await c.env.AI_LIMITER.limit({ key: c.req.header('cf-connecting-ip') ?? 'anon' })\n  if (!success) return c.json({}, 429)\n  const n =")}, "meter.ratelimit-binding")
+T.expect("P8 meter: a jsonc-declared binding that the route calls passes and names the call", r.get("status") == "PASS" and "index.ts" in r.get("evidence", ""), out[-200:])
+
+# --- Phase 8: check_app / check_fetch regressions ---
+# Each former benchmark known_miss (bench/cases/secure_app_routes.py, 2026-11-01) as a unit fixture: the bad
+# shape FAILs, its safe neighbor PASSes. Shapes follow the bench cases; no key-shaped strings.
+HONO_PKG8 = {"package.json": json.dumps({"dependencies": {"hono": "4.6.0"}}), "wrangler.toml": 'name = "notes"\nmain = "src/index.ts"\n'}
+NODE_PKG8 = {"package.json": json.dumps({"dependencies": {"express": "4.21.0", "undici": "6.21.0", "@hono/node-server": "1.13.0"}}), "fly.toml": 'app = "x"\n'}
+
+def app8(files, cid):
+    return st("check_app.py", dict(HONO_PKG8, **files), cid)
+
+def fetch8(files, cid, base=NODE_PKG8):
+    return st("check_fetch.py", dict(base, **files), cid)
+
+# app.debug-routes: the debug word starting a hyphenated segment
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/debug-info', (c) => c.json({ bindings: Object.keys(c.env) }))\nexport default app\n"}, "app.debug-routes")
+T.expect("p8 debug: /api/debug-info (hyphenated) fails", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/seeds', (c) => c.json([]))\napp.get('/api/environments', (c) => c.json([]))\napp.post('/api/password/reset', (c) => c.text('ok'))\nexport default app\n"}, "app.debug-routes")
+T.expect("p8 debug: /api/seeds, /api/environments, /api/password/reset are products, PASS", s == "PASS", out[-200:])
+
+# app.signout: an audit-log INSERT is not a revocation; a session-table write is
+SIGNOUT8 = "import { Hono } from 'hono'\nimport { deleteCookie } from 'hono/cookie'\nconst app = new Hono()\napp.post('/api/logout', async (c) => {\n  await c.env.DB.prepare('%s').bind(1).run()\n  deleteCookie(c, 'session', { path: '/' })\n  return c.redirect('/')\n})\nexport default app\n"
+s, out = app8({"src/index.ts": SIGNOUT8 % "INSERT INTO audit_log (user_id, event) VALUES (?, ?)"}, "app.signout")
+T.expect("p8 signout: a .prepare( INSERT into audit_log revokes nothing, FAIL", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": SIGNOUT8 % "INSERT INTO revoked_sessions (hash, expires_at) VALUES (?, ?)"}, "app.signout")
+T.expect("p8 signout: an INSERT into revoked_sessions passes", s == "PASS", out[-200:])
+s, out = app8({"src/index.ts": SIGNOUT8 % "DELETE FROM sessions WHERE id = ?"}, "app.signout")
+T.expect("p8 signout: a DELETE FROM sessions passes", s == "PASS", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.post('/api/logout', async (c) => {\n  // INSERT INTO revoked_sessions happens in a later ticket\n  deleteCookie(c, 'session')\n  return c.redirect('/')\n})\nexport default app\n"}, "app.signout")
+T.expect("p8 signout: a session-table write in a comment is not a revocation", s == "FAIL", out[-200:])
+
+# app.object-writes: ownerId from the request body; a 403 whose condition names no identity
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.patch('/api/notes/:id', async (c) => {\n  const { ownerId, body } = await c.req.json()\n  await c.env.DB.prepare('UPDATE notes SET body = ? WHERE id = ? AND owner = ?').bind(body, c.req.param('id'), ownerId).run()\n  return c.json({ ok: true })\n})\nexport default app\n"}, "app.object-writes")
+T.expect("p8 object-writes: ownerId destructured from c.req.json() is not an owner check, FAIL", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.patch('/api/notes/:id', async (c) => {\n  const body = await c.req.json()\n  await c.env.DB.prepare('UPDATE notes SET body = ? WHERE id = ? AND owner = ?').bind(body.text, c.req.param('id'), body.ownerId).run()\n  return c.json({ ok: true })\n})\nexport default app\n"}, "app.object-writes")
+T.expect("p8 object-writes: body.ownerId is not an owner check, FAIL", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.patch('/api/notes/:id', async (c) => {\n  const user = await requireUser(c)\n  const { ownerId, body } = await c.req.json()\n  await c.env.DB.prepare('UPDATE notes SET body = ? WHERE id = ? AND owner = ?').bind(body, c.req.param('id'), user.id).run()\n  return c.json({ ok: true })\n})\nexport default app\n"}, "app.object-writes")
+T.expect("p8 object-writes: a request ownerId beside a real requireUser still passes", s == "PASS", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.put('/api/notes/:id', async (c) => {\n  const note = await c.env.DB.prepare('SELECT locked FROM notes WHERE id = ?').bind(c.req.param('id')).first()\n  if (!note) return c.json({ error: 'not found' }, 404)\n  if (note.locked) return c.json({ error: 'Forbidden' }, 403)\n  await c.env.DB.prepare('UPDATE notes SET body = ?').run()\n  return c.json({ ok: true })\n})\nexport default app\n"}, "app.object-writes")
+T.expect("p8 object-writes: a 403 that only refuses locked notes is not a gate, FAIL", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.put('/api/notes/:id', async (c) => {\n  const user = c.get('user')\n  const note = await c.env.DB.prepare('SELECT owner FROM notes WHERE id = ?').bind(c.req.param('id')).first()\n  if (note.owner !== user.id) return c.json({ error: 'Forbidden' }, 403)\n  await c.env.DB.prepare('UPDATE notes SET body = ?').run()\n  return c.json({ ok: true })\n})\nexport default app\n"}, "app.object-writes")
+T.expect("p8 object-writes: a 403 whose condition compares the owner to the user passes", s == "PASS", out[-200:])
+s, out = st("check_app.py", {"package.json": json.dumps({"dependencies": {"next": "16.0.1"}}), "app/api/notes/[id]/route.ts": "export async function PATCH(req: Request) {\n  const session = await auth()\n  if (!session) return new Response(null, { status: 401 })\n  const { body } = await req.json()\n  await db.note.updateMany({ where: { id: 'x', ownerId: session.user.id }, data: { body } })\n  return Response.json({ ok: true })\n}\n"}, "app.object-writes")
+T.expect("p8 object-writes: ownerId from the session with a 401 on no session passes", s == "PASS", out[-200:])
+
+# app.object-writes: a raw Worker fetch handler routed by pathname.startsWith and request.method
+WORKER8 = "export default {\n  async fetch(request: Request, env: Env): Promise<Response> {\n    const url = new URL(request.url)\n    if (url.pathname.startsWith('/api/notes/') && request.method === '%s') {\n      const id = url.pathname.split('/').pop()\n      await env.DB.prepare('DELETE FROM notes WHERE id = ?').bind(id).run()\n      return new Response(null, { status: 204 })\n    }\n    return new Response('not found', { status: 404 })\n  },\n}\n"
+s, out = st("check_app.py", {"wrangler.toml": 'name = "w"\n', "src/index.ts": WORKER8 % "DELETE"}, "app.object-writes")
+T.expect("p8 object-writes: pathname.startsWith('/api/notes/') + method DELETE with no auth fails", s == "FAIL" and "DELETE /api/notes/*" in out, out[-300:])
+s, out = st("check_app.py", {"wrangler.toml": 'name = "w"\n', "src/index.ts": WORKER8 % "GET"}, "app.object-writes")
+T.expect("p8 object-writes: the same prefix on GET is not a write route", s == "PASS", out[-200:])
+
+# app.header-identity: bracket form, FastAPI Header(), and a response-header WRITE
+s, out = st("check_app.py", {"package.json": json.dumps({"dependencies": {"express": "4"}}), "src/identity.js": "export function currentUser(req, res, next) {\n  const id = req.headers['x-user-id']\n  if (!id) return res.status(401).end()\n  req.user = { id: String(id) }\n  next()\n}\n"}, "app.header-identity")
+T.expect("p8 header-identity: req.headers['x-user-id'] fails", s == "FAIL", out[-200:])
+s, out = st("check_app.py", {"requirements.txt": "fastapi\n", "app/main.py": "from fastapi import FastAPI, Header\napp = FastAPI()\n\n@app.get('/notes')\ndef list_notes(x_user_id: str = Header(...)):\n    return []\n"}, "app.header-identity")
+T.expect("p8 header-identity: FastAPI x_user_id: str = Header(...) fails", s == "FAIL", out[-200:])
+s, out = st("check_app.py", {"requirements.txt": "flask\n", "app.py": "@app.get('/notes')\ndef notes():\n    uid = request.headers.get('x-user-id', None)\n    return db.notes(uid)\n"}, "app.header-identity")
+T.expect("p8 header-identity: a two-argument headers.get('x-user-id', default) READ fails", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/me', async (c) => {\n  const user = c.get('user')\n  c.header('X-Tenant-Id', String(user.tenant))\n  return c.json({ id: user.id })\n})\nexport default app\n"}, "app.header-identity")
+T.expect("p8 header-identity: c.header('X-Tenant-Id', value) writes a response header, PASS", s == "PASS", out[-200:])
+
+# app.cors: Fastify register(cors, {...})
+FASTIFY8 = {"package.json": json.dumps({"dependencies": {"fastify": "5.1.0", "@fastify/cors": "10.0.1"}})}
+s, out = st("check_app.py", dict(FASTIFY8, **{"src/server.js": "import Fastify from 'fastify'\nimport cors from '@fastify/cors'\nconst app = Fastify()\nawait app.register(cors, { origin: true, credentials: true })\n"}), "app.cors")
+T.expect("p8 cors: app.register(cors, { origin: true, credentials: true }) fails", s == "FAIL", out[-200:])
+s, out = st("check_app.py", dict(FASTIFY8, **{"src/server.js": "import Fastify from 'fastify'\nconst app = Fastify()\nawait app.register(require('@fastify/cors'), { credentials: true, origin: (o, cb) => cb(null, true) })\n"}), "app.cors")
+T.expect("p8 cors: register(require('@fastify/cors'), approve-all callback) fails", s == "FAIL", out[-200:])
+s, out = st("check_app.py", dict(FASTIFY8, **{"src/server.js": "import Fastify from 'fastify'\nimport cors from '@fastify/cors'\nconst app = Fastify()\nawait app.register(cors, { origin: ['https://app.example.com'], credentials: true })\n"}), "app.cors")
+T.expect("p8 cors: register(cors) with an origin list passes", s == "PASS", out[-200:])
+
+# app.error-leak: the stack copied into a local first
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.onError((err, c) => {\n  const detail = err.stack\n  return c.json({ error: 'internal', detail }, 500)\n})\nexport default app\n"}, "app.error-leak")
+T.expect("p8 error-leak: const detail = err.stack then c.json({ detail }) fails", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.onError((err, c) => {\n  const { stack } = err\n  return new Response(stack, { status: 500 })\n})\nexport default app\n"}, "app.error-leak")
+T.expect("p8 error-leak: const { stack } = err then new Response(stack) fails", s == "FAIL", out[-200:])
+s, out = app8({"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.onError((err, c) => {\n  const detail = err.stack\n  console.error(detail)\n  return c.json({ error: 'internal' }, 500)\n})\nexport default app\n"}, "app.error-leak")
+T.expect("p8 error-leak: a stack local that is only logged passes", s == "PASS", out[-200:])
+
+# fetch: undici request(), only where undici is imported
+UNDICI8 = "import express from 'express'\nimport { request } from 'undici'\nconst app = express()\napp.get('/api/fetch-title', async (req, res) => {\n  const target = String(req.query.url)\n  const { body } = await request(target, { maxRedirections: 3 })\n  res.json({ n: (await body.text()).length })\n})\n"
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(NODE_PKG8, **{"src/server.js": UNDICI8})))
+T.status_is("p8 fetch: undici request(target) from req.query is request-url", c, "fetch.request-url", "FAIL", out)
+T.status_is("p8 fetch: undici request(target) is a raw data-URL fetch", c, "fetch.data-url", "FAIL", out)
+T.expect("p8 fetch: on a Node host the request-url FAIL is high", c.get("fetch.request-url", {}).get("severity") == "high")
+s, out = fetch8({"src/server.js": UNDICI8.replace("import { request } from 'undici'\n", "")}, "fetch.request-url")
+T.expect("p8 fetch: request(target) with no client import is some other function, PASS", s == "PASS", out[-200:])
+
+# fetch: the request value handed to a helper in another file
+HELPER_APP8 = "import { Hono } from 'hono'\nimport { importFeed } from './lib/feeds'\nconst app = new Hono()\napp.post('/api/feeds', async (c) => {\n  const { url } = await c.req.json()\n  const feed = await importFeed(url)\n  return c.json({ n: feed.length })\n})\n"
+s, out = fetch8({"src/index.ts": HELPER_APP8, "src/lib/feeds.ts": "export async function importFeed(feedUrl: string) {\n  const res = await fetch(feedUrl, { headers: { accept: 'application/rss+xml' } })\n  return res.text()\n}\n"}, "fetch.request-url")
+T.expect("p8 fetch: a body URL fetched raw by importFeed() in another file fails and names the helper", s == "FAIL" and "via importFeed()" in out and "feeds.ts" in out, out[-300:])
+s, out = fetch8({"src/index.ts": HELPER_APP8, "src/lib/feeds.ts": "export async function importFeed(feedUrl: string) {\n  const u = new URL(feedUrl)\n  const res = await fetch(u)\n  return res.text()\n}\n"}, "fetch.request-url")
+T.expect("p8 fetch: the helper wrapping the parameter in new URL() still fails", s == "FAIL", out[-200:])
+s, out = fetch8({"src/index.ts": HELPER_APP8, "src/lib/feeds.ts": "export async function importFeed(feedUrl: string) {\n  return pull(feedUrl)\n}\nasync function pull(target: string) {\n  return (await fetch(target)).text()\n}\n"}, "fetch.request-url")
+T.expect("p8 fetch: two helper hops deep still fails", s == "FAIL", out[-200:])
+s, out = fetch8({"src/index.ts": HELPER_APP8, "src/lib/feeds.ts": "import { safeFetch } from './safeFetch'\nexport async function importFeed(feedUrl: string) {\n  return (await safeFetch(feedUrl)).text()\n}\n",
+                 "src/lib/safeFetch.ts": "import ipaddr from 'ipaddr.js'\nexport async function safeFetch(input: string) {\n  const u = new URL(input)\n  if (ipaddr.parse(await resolve(u.hostname)).range() !== 'unicast') throw new Error('blocked')\n  return fetch(u)\n}\n"}, "fetch.request-url")
+T.expect("p8 fetch: a helper that goes through safeFetch passes", s == "PASS", out[-200:])
+
+# fetch: destructured searchParams, and a caller-chosen host inside a template
+s, out = fetch8({"app/api/img/route.ts": "export async function GET(req: Request) {\n  const { searchParams } = new URL(req.url)\n  const image = searchParams.get('image')\n  const upstream = await fetch(image)\n  return new Response(upstream.body)\n}\n"}, "fetch.request-url", base={"package.json": json.dumps({"dependencies": {"next": "16.0.1"}})})
+T.expect("p8 fetch: const { searchParams } = new URL(req.url) feeding fetch fails", s == "FAIL", out[-200:])
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(NODE_PKG8, **{"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/status', async (c) => {\n  const host = c.req.query('host')\n  const r = await fetch(`https://${host}/health`)\n  return c.json({ up: r.ok })\n})\n"})))
+T.status_is("p8 fetch: `https://${host}/health` with host from the query is request-url", c, "fetch.request-url", "FAIL", out)
+T.status_is("p8 fetch: a variable host is a raw data-URL fetch", c, "fetch.data-url", "FAIL", out)
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(NODE_PKG8, **{"src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/w', async (c) => {\n  const city = c.req.query('city')\n  const r = await fetch(`https://api.weather.example/v1?city=${encodeURIComponent(city)}`)\n  return c.json(await r.json())\n})\n"})))
+T.status_is("p8 fetch: a fixed host with the request value in the query string passes request-url", c, "fetch.request-url", "PASS", out)
+T.status_is("p8 fetch: ...and data-url", c, "fetch.data-url", "PASS", out)
+
+# fetch: a request KEY into a constant allowlist map
+MAP_APP8 = "import { Hono } from 'hono'\nconst SOURCES: Record<string, { url: string }> = {\n  city: { url: 'https://news.example.org/city.rss' },\n  sports: { url: 'https://news.example.org/sports.rss' },\n}\nconst app = new Hono()\napp.get('/api/feed', async (c) => {\n  const src = SOURCES[c.req.query('feed') ?? '']\n  if (!src) return c.json({ error: 'unknown feed' }, 400)\n  const r = await fetch(src.url)\n  return c.text(await r.text())\n})\n"
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(HONO_PKG8, **{"src/index.ts": MAP_APP8})))
+T.status_is("p8 fetch: SOURCES[c.req.query('feed')].url is an allowlisted URL, request-url PASS", c, "fetch.request-url", "PASS", out)
+T.status_is("p8 fetch: ...and data-url PASS", c, "fetch.data-url", "PASS", out)
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(HONO_PKG8, **{"src/index.ts": MAP_APP8.replace("'https://news.example.org/sports.rss'", "`https://${c.env.FEED_HOST}/sports.rss`")})))
+T.status_is("p8 fetch: a map whose URLs are not all fixed-host literals is not an allowlist, request-url FAIL", c, "fetch.request-url", "FAIL", out)
+
+# fetch: new Request(storedUrl) is the stored URL, not the incoming request
+s, out = fetch8({"src/deliver.ts": "export async function deliverPending(env: Env) {\n  const { results } = await env.DB.prepare('SELECT url, payload FROM webhook_jobs').all()\n  for (const hook of results) {\n    const request = new Request(hook.url, { method: 'POST', body: hook.payload })\n    const res = await fetch(request)\n    await env.DB.prepare('UPDATE webhook_jobs SET status = ?').bind(res.status).run()\n  }\n}\n"}, "fetch.data-url", base={"wrangler.toml": 'name = "w"\n[triggers]\ncrons = ["*/5 * * * *"]\n'})
+T.expect("p8 fetch: fetch(request) where request = new Request(hook.url) is a raw data-URL fetch (Worker: low)", s == "FAIL", out[-300:])
+s, out = fetch8({"src/index.ts": "export default {\n  fetch(request: Request, env: Env) {\n    if (new URL(request.url).pathname.startsWith('/assets')) return env.ASSETS.fetch(request)\n    return fetch(request)\n  },\n}\n"}, "fetch.data-url", base={"wrangler.toml": 'name = "w"\n'})
+T.expect("p8 fetch: proxying the incoming Request still passes", s == "PASS", out[-200:])
+s, out = fetch8({"src/jobs/avatars.ts": "// const request = new Request(hook.url)\n// fetch(request)\nexport async function noop() { return 1 }\n"}, "fetch.data-url")
+T.expect("p8 fetch: a commented-out new Request/fetch pair is nothing", s == "PASS", out[-200:])
+
+# fetch: browser-only React code is not a server fetch site
+VITE8 = {"package.json": json.dumps({"dependencies": {"react": "19.0.0", "vite": "6.0.0"}})}
+s, out = fetch8({"src/hooks/useJson.ts": "import { useEffect, useState } from 'react'\nexport function useJson<T>(url: string) {\n  const [data, setData] = useState<T | null>(null)\n  useEffect(() => { fetch(url).then((r) => r.json()).then(setData) }, [url])\n  return data\n}\n"}, "fetch.data-url", base=VITE8)
+T.expect("p8 fetch: fetch(url) inside a React hook runs in the browser, PASS", s == "PASS", out[-200:])
+s, out = fetch8({"app/Widget.tsx": "'use client'\nimport React from 'react'\nexport function Widget({ src }: { src: string }) {\n  React.useEffect(() => { fetch(src) }, [src])\n  return null\n}\n"}, "fetch.data-url", base=VITE8)
+T.expect("p8 fetch: a 'use client' component passes", s == "PASS", out[-200:])
+s, out = fetch8({"src/hooks/useJson.ts": "import { useEffect, useState } from 'react'\nexport function useJson(url) { useEffect(() => { fetch(url) }, [url]) }\n", "src/jobs/ingest.ts": "export async function pull(item: { link: string }) { return (await fetch(item.link)).text() }\n"}, "fetch.data-url", base=VITE8)
+T.expect("p8 fetch: a server-side raw fetch in the same repo still fails (the hook file alone is skipped)", s == "FAIL" and "1 browser-only file(s) skipped" in out and "ingest.ts" in out, out[-300:])
+
+# fetch: a guard function exists but a raw site does not call it (FAIL); a guard installed below the call sites (UNKNOWN)
+GUARDED8 = {"src/lib/safeFetch.ts": "import ipaddr from 'ipaddr.js'\nimport { lookup } from 'node:dns/promises'\nexport async function safeFetch(input: string) {\n  const u = new URL(input)\n  const { address } = await lookup(u.hostname)\n  if (ipaddr.parse(address).range() !== 'unicast') throw new Error('blocked')\n  return fetch(u, { redirect: 'error' })\n}\n",
+            "src/jobs/feeds.ts": "import { safeFetch } from '../lib/safeFetch'\nexport async function pull(item: { link: string }) { return (await safeFetch(item.link)).text() }\n",
+            "src/jobs/avatars.ts": "export async function importAvatar(profile: { avatarUrl: string }) {\n  const res = await fetch(profile.avatarUrl)\n  return new Uint8Array(await res.arrayBuffer())\n}\n"}
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(NODE_PKG8, **GUARDED8)))
+T.status_is("p8 fetch: safeFetch exists but avatars.ts fetches raw: FAIL, not UNKNOWN", c, "fetch.data-url", "FAIL", out)
+T.expect("p8 fetch: that FAIL is high on Node and names the raw site", c.get("fetch.data-url", {}).get("severity") == "high" and "avatars.ts" in c["fetch.data-url"]["evidence"], out[-300:])
+rc, c, out = T.run(os.path.join(S, "check_fetch.py"), T.tree(dict(NODE_PKG8, **dict(GUARDED8, **{"src/net.ts": "import { Agent, setGlobalDispatcher } from 'undici'\nsetGlobalDispatcher(new Agent({ connect: { lookup: publicOnlyLookup } }))\n"}))))
+T.status_is("p8 fetch: a global dispatcher guard below the call sites keeps the raw site UNKNOWN", c, "fetch.data-url", "UNKNOWN", out)
+
+# --- check_mcp: authorization inside MCP tools (built 2026-11-01) ---
+MCP_PKG = json.dumps({"dependencies": {"@modelcontextprotocol/sdk": "1.20.0", "agents": "0.2.0", "zod": "3.23.8"}})
+MCP_HEAD = """import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+import * as q from './queries'
+export function createServer(deps) {
+  const server = new McpServer({ name: 'notes', version: '1.0.0' })
+  const viewer = deps.user.id
+"""
+MCP_TAIL = "  return server\n}\n"
+READ_TOOL = """  server.registerTool('read_note', { inputSchema: { note_id: z.string() } }, async ({ note_id }) => {
+    const n = await q.getNote(deps.db, viewer, note_id)
+    return { content: [{ type: 'text', text: n?.body ?? 'none' }] }
+  })
+"""
+SYNC_GATED = """  server.registerTool('sync', { inputSchema: { space_id: z.string() } }, async ({ space_id }) => {
+    if (!deps.user.owner) return { content: [{ type: 'text', text: 'Only an owner can run sync.' }] }
+    await q.syncSpace(deps.db, space_id)
+    return { content: [{ type: 'text', text: 'ok' }] }
+  })
+"""
+Q_SCOPED = """export async function getNote(db, viewer, id) {
+  return db.prepare(`SELECT body FROM notes WHERE id = ? AND owner_id = ?`).bind(id, viewer).first()
+}
+export async function syncSpace(db, space) {
+  await db.prepare(`DELETE FROM notes WHERE space_id = ?`).bind(space).run()
+}
+"""
+def mcp(server, queries, extra=None):
+    f = {"package.json": MCP_PKG, "src/server.ts": MCP_HEAD + server + MCP_TAIL, "src/queries.ts": queries}
+    f.update(extra or {})
+    return T.tree(f)
+
+def mcp_run(repo):
+    return T.run(os.path.join(S, "check_mcp.py"), repo)
+
+# known-bad first: every FAIL-capable id seen FAIL
+rc, c, out = mcp_run(mcp(READ_TOOL, Q_SCOPED.replace(" AND owner_id = ?", "").replace(".bind(id, viewer)", ".bind(id)")))
+T.status_is("mcp: a tool read keyed only on the caller's note id", c, "mcp.tool-scope", "FAIL", out)
+T.expect("mcp: that FAIL is high and names queries.ts:2", c.get("mcp.tool-scope", {}).get("severity") == "high" and "src/queries.ts:2" in c["mcp.tool-scope"]["evidence"], out[-300:])
+rc, c, out = mcp_run(mcp(READ_TOOL.replace("{ note_id: z.string() }", "{ note_id: z.string(), user_id: z.string() }"), Q_SCOPED))
+T.status_is("mcp: a tool taking user_id as an argument", c, "mcp.identity-from-args", "FAIL", out)
+rc, c, out = mcp_run(mcp(READ_TOOL + SYNC_GATED.replace("    if (!deps.user.owner) return { content: [{ type: 'text', text: 'Only an owner can run sync.' }] }\n", ""), Q_SCOPED))
+T.status_is("mcp: a sync tool with no owner check", c, "mcp.privileged-tools", "FAIL", out)
+T.status_is("mcp: the ungated sync's unscoped DELETE is now reachable and FAILs scope too", c, "mcp.tool-scope", "FAIL", out)
+NESTED = Q_SCOPED.replace("`SELECT body FROM notes WHERE id = ? AND owner_id = ?`",
+                          "`SELECT body FROM notes WHERE owner_id = ? AND created_at < (SELECT created_at FROM notes WHERE id = ?)`").replace(".bind(id, viewer)", ".bind(viewer, id)")
+rc, c, out = mcp_run(mcp(READ_TOOL, NESTED))
+T.status_is("mcp: a scoped read with an unscoped nested lookup", c, "mcp.tool-scope", "FAIL", out)
+T.expect("mcp: that FAIL is low (it leaks a timestamp, not rows)", c.get("mcp.tool-scope", {}).get("severity") == "low", out[-300:])
+HELPER_SQL = Q_SCOPED.replace("return db.prepare(`SELECT body FROM notes WHERE id = ? AND owner_id = ?`).bind(id, viewer).first()",
+                              "return rows(db, `SELECT body FROM notes WHERE id = ?`, id)")
+rc, c, out = mcp_run(mcp(READ_TOOL, HELPER_SQL))
+T.status_is("mcp: SQL passed through the app's own rows() helper is read too", c, "mcp.tool-scope", "FAIL", out)
+PY = {"requirements.txt": "fastmcp==2.3.0\n", "server.py": """from fastmcp import FastMCP
+mcp = FastMCP("notes")
+
+@mcp.tool()
+def read_note(note_id: str) -> str:
+    row = db.execute("SELECT body FROM notes WHERE id = ?", (note_id,)).fetchone()
+    return row[0]
+"""}
+rc, c, out = mcp_run(T.tree(PY))
+T.status_is("mcp: a FastMCP tool keyed only on the caller's id", c, "mcp.tool-scope", "FAIL", out)
+
+# known-good: the same shapes, safe
+rc, c, out = mcp_run(mcp(READ_TOOL + SYNC_GATED, Q_SCOPED))
+for cid in ("mcp.tool-scope", "mcp.identity-from-args", "mcp.privileged-tools"):
+    T.status_is("mcp good: owner-scoped read and an owner-gated sync", c, cid, "PASS", out)
+VIS = """const visible = (col) => `${col} IN (SELECT channel_id FROM visible_channels WHERE user_id = ?)`
+export async function getNote(db, viewer, id) {
+  return db.prepare(`SELECT body FROM notes WHERE id = ? AND ${visible("channel_id")}`).bind(id, viewer).first()
+}
+export async function syncSpace(db, space) {
+  await db.prepare(`DELETE FROM notes WHERE space_id = ?`).bind(space).run()
+}
+"""
+rc, c, out = mcp_run(mcp(READ_TOOL + SYNC_GATED, VIS))
+T.status_is("mcp good: scoped through a visible() helper interpolated into the SQL", c, "mcp.tool-scope", "PASS", out)
+DERIVED = """export async function getNote(db, viewer, id) {
+  const hit = await db.prepare(`SELECT channel_id, created_at FROM notes WHERE id = ? AND owner_id = ?`).bind(id, viewer).first()
+  if (!hit) return null
+  return db.prepare(`SELECT body FROM notes WHERE channel_id = ? AND created_at > ?`).bind(hit.channel_id, hit.created_at).all()
+}
+export async function syncSpace(db, space) {}
+"""
+rc, c, out = mcp_run(mcp(READ_TOOL, DERIVED))
+T.status_is("mcp good: neighbors read by a channel id taken from a scoped lookup", c, "mcp.tool-scope", "PASS", out)
+CONST = """export async function getNote(db, viewer, id) {
+  const mine = `SELECT s.id FROM spaces s JOIN members m ON m.space_id = s.id AND m.user_id = ?1`
+  return db.prepare(`SELECT body FROM notes WHERE id = ?2 AND space_id IN (${mine})`).bind(viewer, id).first()
+}
+export async function syncSpace(db, space) {}
+"""
+rc, c, out = mcp_run(mcp(READ_TOOL, CONST))
+T.status_is("mcp good: scoped by a membership subquery held in a const", c, "mcp.tool-scope", "PASS", out)
+rc, c, out = mcp_run(T.tree({"package.json": json.dumps({"dependencies": {"hono": "4.6.0"}}), "src/index.ts": "export default { fetch: () => new Response('hi') }\n"}))
+T.status_is("mcp: a repo with no MCP server", c, "mcp.none", "PASS", out)
+rc, c, out = mcp_run(T.tree({"package.json": MCP_PKG, "src/server.ts": "import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'\nexport const s = new McpServer({ name: 'x', version: '1' })\nregisterAll(s)\n"}))
+T.status_is("mcp: an MCP import with no tool the check can recognize is UNKNOWN, never PASS", c, "mcp.tool-scope", "UNKNOWN", out)
+
+# --- check_mcp Phase 11: the shapes a real review found (scope grain, model-visible writes, open registration, typed params, app tools) ---
+import importlib.util as _ilu
+
+
+def _bench_cases(name):
+    """The bench's case list, or [] with a visible note where bench/ is absent (an installed or exported copy ships
+    the plugin folder only). Absent bench is a skipped section, never a pass: the source repo always has it."""
+    path = os.path.join(HERE, "..", "..", "bench", "cases", name)
+    if not os.path.exists(path):
+        print("SKIPPED: bench/cases/%s not present in this copy; its MCP cases run in the source repo" % name)
+        return []
+    spec = _ilu.spec_from_file_location(name[:-3], path)
+    mod = _ilu.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod.CASES
+
+
+for case in _bench_cases("secure_app_mcp.py"):
+    rc, c, out = mcp_run(T.tree(case["files"]))
+    for cid, want in case["expect"].items():
+        T.status_is("mcp p11 %s" % case["id"], c, cid, want, out)
+
+# --- check_mcp: tool-description poisoning (OWASP MCP03), from the bench file so the two never drift ---
+for case in _bench_cases("secure_app_mcp_descriptions.py"):
+    rc, c, out = mcp_run(T.tree(case["files"]))
+    for cid, want in case["expect"].items():
+        T.status_is("mcp desc %s" % case["id"], c, cid, want, out)
 
 T.finish()

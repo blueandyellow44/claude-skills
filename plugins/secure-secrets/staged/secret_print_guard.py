@@ -15,9 +15,12 @@ the call and tells Claude the count-only or redacted form. Exit 0 allows.
 Malformed input fails OPEN (exit 0, warning on stderr): a guard that crashes
 must not take every Bash call down with it.
 
-Override, visible in the transcript: start the command with
-SECRET_GUARD_ALLOW=1 (read from the command string; a hook cannot see env vars
-set inline on the command it gates, found 2026-06-13).
+Override, visible in the transcript: start the command (or the command after a
+`cd ... &&`) with SECRET_GUARD_ALLOW=1 (read from the command string; a hook
+cannot see env vars set inline on the command it gates, found 2026-06-13).
+2026-11-01: five false blocks in one day (prose naming a secrets file inside a
+heredoc, a filtered os.environ copy, a grep pattern containing env, the prefix
+after a cd) made the guard judge sinks and read primitives, not words.
 """
 import json
 import re
@@ -84,8 +87,40 @@ ALLOWED_OTHER = [
 
 
 def _segments(cmd):
-    """Split on && || ; and newlines, but keep pipelines whole."""
-    return [s.strip() for s in re.split(r"&&|\|\||;|\n", cmd) if s.strip()]
+    """Split on && || ; and newlines OUTSIDE quotes, keeping pipelines whole. A `;` or a line break inside a
+    quoted argument is text: a commit message passed to a shell function, "...Gitleaks clean; env\nholds...",
+    once split into a bare `env` command (false block found live, 2026-11-01). What a quote hands to an
+    interpreter (sh -c, bash -c, eval) is judged separately by _interpreter_payloads."""
+    out, cur, q, i, n = [], [], None, 0, len(cmd)
+    while i < n:
+        ch = cmd[i]
+        if q:
+            cur.append(ch)
+            if ch == "\\" and q == '"' and i + 1 < n:
+                cur.append(cmd[i + 1]); i += 2; continue
+            if ch == q:
+                q = None
+            i += 1; continue
+        if ch in "'\"":
+            q = ch; cur.append(ch); i += 1; continue
+        if ch == "\\" and i + 1 < n:
+            cur.append(ch); cur.append(cmd[i + 1]); i += 2; continue
+        two = cmd[i:i + 2]
+        if two in ("&&", "||"):
+            out.append("".join(cur)); cur = []; i += 2; continue
+        if ch in ";\n":
+            out.append("".join(cur)); cur = []; i += 1; continue
+        cur.append(ch); i += 1
+    out.append("".join(cur))
+    return [x.strip() for x in out if x.strip()]
+
+
+INTERP_PAYLOAD = re.compile(r"""(?:\b(?:sh|bash|zsh|dash|ksh)\s+(?:-[a-zA-Z]*c[a-zA-Z]*)|\beval)\s+('(?:[^']*)'|"(?:[^"\\]|\\.)*")""")
+
+
+def _interpreter_payloads(cmd):
+    """Script text a quote hands to a shell (bash -c '...', eval "..."): judged as a command of its own."""
+    return [m.group(1)[1:-1] for m in INTERP_PAYLOAD.finditer(cmd)]
 
 
 def _secret_var_named(seg):
@@ -115,7 +150,38 @@ RUNS_OTHER = re.compile(r"\$\(|`|\bxargs\b|-exec\b|\bfor\s+\w+\s+in\b|\bwhile\b|
 # a bare .* or .??, or ?dev/?env. Not a jq filter like '.[0]' (a false block found live, 2026-10-09).
 DOT_GLOB = re.compile(r"""(?:^|[\s/:'"=])(?:\.(?:[de][\w.-]*[*?\[]|\[[^\]]*[de][^\]]*\])[\w.*?\[\]-]*|\.[*?]+(?=$|[\s'"|;&)])|\?[\w.*?\[\]-]*(?:dev|env)[\w.*?\[\]-]*)""")
 SECRET_ASSIGN = re.compile(r"""(?<![-\w])[A-Za-z_]\w*=['"]?\.?(?:\.dev|\.env|dev\.vars|\.d\b|\.e\b)""")  # f=.dev; not --env-file=
-ENV_DUMP_ANYWHERE = re.compile(r"\bprintenv\b|JSON\.stringify\(\s*process\.env|Object\.(?:values|entries)\(\s*process\.env|os\.environ\.(?:values|items|copy)\(|dict\(\s*os\.environ|for\s+\w+\s+in\s+os\.environ|\benv\s*$|\benv\s*\|")
+ENV_DUMP_SHELL = re.compile(r"\bprintenv\b|(?:^|\|)\s*env\s*(?:$|\|)")
+# A whole-environment expression in code is a dump only when a sink prints, logs, writes or returns it on
+# the same line; `{k: v for k, v in os.environ.items() if ...}` builds a filtered copy and prints nothing
+# (false block found live, 2026-11-01).
+ENV_DUMP_CODE = re.compile(r"JSON\.stringify\(\s*process\.env|Object\.(?:values|entries)\(\s*process\.env|os\.environ\.(?:values|items|copy)\(|dict\(\s*os\.environ|for\s+\w+\s*(?:,\s*\w+)?\s+in\s+os\.environ")
+PRINT_SINK = re.compile(r"\b(?:print|console\.(?:log|error|info|dir)|puts|pp|sys\.std(?:out|err)\.write|json\.dumps?|JSON\.stringify|write|return|echo|process\.stdout\.write)\b|>>?\s*\S")
+# A secrets-file name inside a script body is a READ only beside a read primitive on the same line; a
+# docstring, a comment or a string written to a notes file is text (false block found live, 2026-11-01).
+READ_PRIM = re.compile(r"\bopen\s*\(|\bread(?:File|FileSync|_text|lines)?\s*\(|\bPath\s*\(|\bsubprocess\b|\bexec\w*\s*\(|\bspawn\w*\s*\(|\bfs\.|\brequire\(\s*['\"]fs|\bcat\s|\bhead\s|\btail\s|\bless\s|\bsource\s|\bdotenv\b|load_dotenv|\bwith\s+open")
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n(.*?)\n\2(?=$|\n)", re.S)
+
+
+def _env_dump(text):
+    """True when text dumps the whole environment: a shell env/printenv, or a code form beside a sink."""
+    if ENV_DUMP_SHELL.search(text):
+        return True
+    return any(ENV_DUMP_CODE.search(line) and PRINT_SINK.search(line) for line in text.split("\n"))
+
+
+def _code_body_hit(body):
+    """Judge a script body (a heredoc fed to an interpreter, or a -c/-e script) line by line."""
+    for line in body.split("\n"):
+        if (SECRET_FILE_TOKEN.search(" " + line) or DOT_GLOB.search(" " + line)) and READ_PRIM.search(line):
+            return ("reads a secrets file from code", HINT_FILE)
+        if ENV_DUMP_CODE.search(line) and PRINT_SINK.search(line):
+            return ("prints the environment from code", "print the names only: `print(sorted(os.environ))`")
+        if re.search(r"(?:print|console\.log|puts)\s*\(?[^\n]*(?:os\.environ|process\.env|ENV\[|getenv)[^\n]*" + SECRETISH, line, re.I):
+            return ("prints a secret from code", "print presence or length, never the value")
+        for sh in SHAPES:
+            if re.search(sh, line):
+                return ("contains a credential-shaped value", "never paste a key into a command")
+    return None
 
 
 def _normalize(cmd):
@@ -138,28 +204,50 @@ def _strip_messages(cmd):
     def blank_echo(m):
         return re.sub(_QUOTED, "''", m.group(0))
     out = re.sub(r"""(?:^|(?<=[;&|]))\s*(?:echo|printf)\b[^;&|\n]*""", blank_echo, out)
+    # A grep PATTERN or a jq FILTER is matched against text, never read as a file: a grep for
+    # `(^|/)\.env|secret` and `--jq '.data.nodes[].name'` both blocked live on 2026-11-01 (the second as
+    # a dotfile glob, the same class as the `.[0]` false block of 2026-10-09). Only the quoted argument is blanked.
+    out = re.sub(r"""(\b(?:grep|rg|egrep|fgrep)\b(?:\s+-{1,2}[A-Za-z-]+(?:=\S+)?)*\s+)('[^']*'|"(?:[^"\\$`]|\\.)*")""", lambda m: m.group(1) + "''", out)
+    out = re.sub(r"""((?:--jq|-q|\bjq)(?:\s+-[a-zA-Z]+)*\s+)('[^']*'|"(?:[^"\\$`]|\\.)*")""", lambda m: m.group(1) + "''", out)
     return out
 
 
 def check(cmd):
     """Return (rule, suggestion) for a command that would print a secret, else None."""
-    if re.match(r"\s*SECRET_GUARD_ALLOW=1\b", cmd):
+    # The override is honored where a top-level command starts: at the front, or after a `cd ... &&`
+    # (found live 2026-11-01: the prefix after a cd was ignored). It stays visible in the transcript.
+    if re.search(r"(?:^|&&|;)\s*SECRET_GUARD_ALLOW=1\b", cmd):
         return None
     raw = cmd
     cmd = _normalize(_strip_messages(cmd))
+    # Script bodies fed to an interpreter are judged as code, line by line, then taken out of the
+    # shell-level pass (a prose line naming .dev.vars inside a heredoc is text, not a read).
+    for m in list(HEREDOC.finditer(cmd)):
+        hit = _code_body_hit(m.group(3))
+        if hit:
+            return hit
+    cmd = HEREDOC.sub(lambda m: m.group(0)[: m.start(3) - m.start()] + "\n" + m.group(2), cmd)
+    # Split on the text as typed (quotes intact), then normalize each piece: _normalize drops every double quote,
+    # which would make a quoted `;` look like a command separator.
+    typed = HEREDOC.sub(lambda m: m.group(0)[: m.start(3) - m.start()] + "\n" + m.group(2), _strip_messages(raw))
     if SECRET_ASSIGN.search(cmd):
         return ("builds a secrets filename in a variable", HINT_FILE)
     loads = bool(re.search(r"(?:^|&&|;|\|\|)\s*(?:source|\.)\s+\S*(?:\.env|\.dev\.vars)|--env-file=", cmd))
-    if loads and ENV_DUMP_ANYWHERE.search(cmd.split("--env-file=", 1)[-1] if "--env-file=" in cmd else re.split(r"(?:source|\.)\s+\S*(?:\.env|\.dev\.vars)\S*", cmd, 1)[-1]):
+    if loads and _env_dump(cmd.split("--env-file=", 1)[-1] if "--env-file=" in cmd else re.split(r"(?:source|\.)\s+\S*(?:\.env|\.dev\.vars)\S*", cmd, 1)[-1]):
         return ("loads a secrets file, then dumps the environment", "after loading, never print the environment; check one name with `[ -n \"$NAME\" ]`")
-    if ENV_DUMP_ANYWHERE.search(cmd) and not re.search(r"\|\s*" + NAMES_OR_COUNT + r"\s*$", cmd):
+    if _env_dump(cmd) and not re.search(r"\|\s*" + NAMES_OR_COUNT + r"\s*$", cmd):
         return ("prints the environment", "list names only: `env | cut -d= -f1`")
     for s in SHAPES:
         if re.search(s, cmd):
             return ("contains a credential-shaped value", "never paste a key into a command; read it from the clipboard or a file inside the command (secret-handling skill)")
     if re.search(r"\bgit\s+(?:show|log\s+[^|;&]*-p|diff|blame|cat-file|grep)\b[^|;&]*(?:\.dev\.vars|\.env\b|\.pem)", cmd):
         return ("prints a secrets file from git history", HINT_FILE)
-    for seg in _segments(cmd):
+    for payload in _interpreter_payloads(typed):
+        if payload.strip() and not re.match(r"\s*SECRET_GUARD_ALLOW=1\b", payload):
+            hit = check(payload)
+            if hit:
+                return hit
+    for seg in (_normalize(x) for x in _segments(typed)):
         names_secret = SECRET_FILE_TOKEN.search(" " + seg) or DOT_GLOB.search(" " + seg)
         if names_secret and RUNS_OTHER.search(seg):
             return ("names a secrets file and runs another command on it", HINT_FILE)

@@ -44,7 +44,7 @@ Counts per rule and file (never values), the classification of each hit, and the
 
 `bash <base>/../../tests/run_tests.sh`
 
-Known-bad: a committed fake key, a committed `.dev.vars`, an unignored `.env` all FAIL, and the value never appears in the output; a missing gitleaks is UNKNOWN (exit 3), never PASS. Known-good: the clean repo PASSes all three.
+Known-bad: a committed fake key, a committed `.dev.vars`, an unignored `.env` all FAIL, and the value never appears in the output; a missing gitleaks is UNKNOWN (exit 3), never PASS. A committed `.env.production.local`, `certs/server.key`, `id_rsa` or `client.p12` FAILs `secrets.tracked`; an unignored `.envrc` FAILs `secrets.ignored`; a `gitleaks:allow` comment after code in a `.tf` or `.go` file FAILs `secrets.allowlist` while the key on that line still FAILs `secrets.history`; a Stripe secret key in a `STRIPE_PUBLISHABLE_KEY` slot, a UUID under `HEROKU_API_KEY` or `cache_secret`, and a hex `api_key` all stay FAIL. Known-good: the clean repo PASSes all three; the encrypted `.env.vault` and `.env.production.local.example` are not secrets files; a prose mention of `gitleaks:allow` in CONTRIBUTING.md and a comment-only `# gitleaks:allow` line are not allowlists; an `idempotencyKey` UUID, a sha256 `cacheKey` and a `pk_live_` publishable key are dismissed as identifiers with the count said in the detail (2026-11-01, Phase 8).
 
 ## Rules
 

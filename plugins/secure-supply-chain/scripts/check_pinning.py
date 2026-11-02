@@ -3,16 +3,23 @@
 
   check_pinning.py REPO
 
-  - actions.pinned: every `uses: owner/repo@ref` in .github/workflows pinned to
-    a full 40-character commit SHA. Third-party actions on a tag FAIL medium;
-    GitHub's own (actions/*, github/*) FAIL low.
-  - actions.secret-scope: a `${{ secrets.X }}` in a workflow-level or job-level
-    `env:` block FAILs medium: every step of the job, including third-party
-    actions, can read it. The scoped pattern gives each secret only to its step.
-  - tooling.wrangler: a deploy that runs `npx wrangler` with no wrangler in
-    package.json, `wrangler@latest`, a `latest`/`*` range, or the wrangler
-    action without `wranglerVersion` FAILs low (a new wrangler can change a
-    deploy with no commit). Only emitted when wrangler is used.
+  - actions.pinned: every `uses: owner/repo@ref` in .github/workflows (block
+    steps, flow-style `- { uses: x@v1 }` steps, job-level reusable workflows,
+    local composite actions) pinned to a full 40-character commit SHA.
+    Third-party actions on a tag FAIL medium; GitHub's own (actions/*,
+    github/*) FAIL low. YAML comments are blanked first: a commented-out step
+    is not a step.
+  - actions.secret-scope: any reference to the secrets context (`${{ secrets.X }}`,
+    `${{secrets.X}}`, `${{ secrets['X'] }}`, `${{ toJSON(secrets) }}`) in a
+    workflow-level or job-level `env:` FAILs medium: every step of the job,
+    including third-party actions, can read it. The scoped pattern gives each
+    secret only to its step.
+  - tooling.wrangler: a deploy that runs wrangler through a one-off runner
+    (`npx`, `pnpm dlx`, `pnpx`, `bunx`, `bun x`, `yarn dlx`) with no wrangler
+    in package.json, `wrangler@latest`, a `latest`/`*` range, or the wrangler
+    action without `wranglerVersion` in that step (whatever order its keys
+    take) FAILs low (a new wrangler can change a deploy with no commit). Only
+    emitted when wrangler is used.
 """
 import os
 import re
@@ -24,8 +31,62 @@ import ledger  # noqa: E402
 import walk  # noqa: E402
 from ledger import result  # noqa: E402
 
-USES = re.compile(r"^\s*-?\s*uses:\s*['\"]?([^'\"\s#]+)", re.M)
+# `uses:` as a mapping key: at a line start (after an optional dash) or inside a flow mapping (`{ uses: x }`, `, uses: x`).
+USES = re.compile(r"(?:^|[\s{,])uses:\s*['\"]?([^'\"\s#,}]+)", re.M)
 SHA = re.compile(r"@[0-9a-f]{40}$")
+# Any read of the secrets context inside an expression: member (`secrets.X`), index (`secrets['X']`),
+# or the whole context (`toJSON(secrets)`), with or without spaces inside `${{ }}`.
+SECRET_REF = re.compile(r"\$\{\{[^}]*(?<![\w.])secrets(?![\w])")
+# wrangler run through a one-off package runner, which downloads whatever version is current.
+RUNNER_WRANGLER = re.compile(r"(?:\bnpx|\bpnpm\s+dlx|\bpnpx|\bbunx|\bbun\s+x|\byarn\s+dlx)\s+(?:--yes\s+|-y\s+|--quiet\s+|-q\s+)*wrangler(@[\w.\-]+)?(?![\w.\-@])")
+
+
+def yaml_code(text):
+    """The workflow with its comments blanked (same length, same line breaks): a `#` at a line start
+    or after whitespace, outside quotes, opens a comment. A commented-out step or secret is not one."""
+    out = []
+    for line in text.split("\n"):
+        q, res = None, []
+        for i, ch in enumerate(line):
+            if q:
+                if ch == q:
+                    q = None
+                res.append(ch)
+            elif ch in "'\"":
+                q = ch
+                res.append(ch)
+            elif ch == "#" and (i == 0 or line[i - 1] in " \t"):
+                res.append(" " * (len(line) - i))
+                break
+            else:
+                res.append(ch)
+        out.append("".join(res))
+    return "\n".join(out)
+
+
+def step_block(lines, i):
+    """The whole step that owns line i (a `uses:` line): from its `- ` dash line to the line before the
+    next step or a shallower key, so `name:`/`uses:`/`with:` are read together in any order. A line with
+    no dash at its key indent (a job-level `uses:`, a flow mapping) falls back to the line plus its block."""
+    key_ind = len(lines[i]) - len(lines[i].lstrip())
+    line = lines[i].lstrip()
+    if line.startswith("- "):
+        key_ind += 2
+    dash_ind = key_ind - 2
+    start = i
+    while start > 0 and not re.match(r"^\s{%d}- " % dash_ind, lines[start]) and lines[start].strip():
+        ind = len(lines[start]) - len(lines[start].lstrip())
+        if ind < key_ind:
+            break
+        start -= 1
+    if not re.match(r"^\s{%d}- " % dash_ind, lines[start]):
+        return lines[i] + "\n" + block(lines, i)
+    out = [lines[start]]
+    for l in lines[start + 1:]:
+        if l.strip() and len(l) - len(l.lstrip()) <= dash_ind:
+            break
+        out.append(l)
+    return "\n".join(out)
 
 
 def workflows(repo):
@@ -81,7 +142,7 @@ def main():
     wfs = workflows(repo)
     unpinned, broad = [], []
     for p in wfs:
-        t = walk.read(p)
+        t = yaml_code(walk.read(p))
         r = walk.rel(repo, p)
         for m in USES.finditer(t):
             u = m.group(1)
@@ -92,8 +153,8 @@ def main():
                 unpinned.append((first, "%s:%d %s" % (r, walk.line_of(t, m.start()), u)))
         lines = t.split("\n")
         for i, l in enumerate(lines):
-            inline = re.match(r"^\s*env:\s*\{.*\$\{\{\s*secrets\.", l)
-            if inline or (re.match(r"^\s*env:\s*$", l) and "${{ secrets." in block(lines, i)):
+            inline = re.match(r"^\s*env:\s*\{", l) and SECRET_REF.search(l)
+            if inline or (re.match(r"^\s*env:\s*$", l) and SECRET_REF.search(block(lines, i))):
                 lvl = env_level(lines, i)
                 if lvl != "step":
                     broad.append("%s:%d (%s-level env)" % (r, i + 1, lvl))
@@ -144,16 +205,16 @@ def main():
         elif v.strip() in ("latest", "*", "") or v.startswith(("http", "git")) or not re.match(r"^\d+\.\d+\.\d+$", v.strip()):
             problems.append("%s: wrangler %r with no package-lock.json pinning it" % (k, v))
     for p in wfs:
-        t = walk.read(p)
+        t = yaml_code(walk.read(p))
         r = walk.rel(repo, p)
-        for m in re.finditer(r"npx\s+(?:--yes\s+|-y\s+)?wrangler(@[\w.\-]+)?", t):
+        for m in RUNNER_WRANGLER.finditer(t):
             uses_wrangler = True
             ver = m.group(1)
             if ver == "@latest" or (not ver and not pinned_in_pkg):
-                problems.append("%s:%d npx wrangler%s (no pinned version)" % (r, walk.line_of(t, m.start()), ver or ""))
-        for m in re.finditer(r"uses:\s*['\"]?cloudflare/wrangler-action@\S+", t):
+                problems.append("%s:%d %s (no pinned version)" % (r, walk.line_of(t, m.start()), " ".join(m.group(0).split())))
+        for m in re.finditer(r"uses:\s*['\"]?cloudflare/wrangler-action@[^'\"\s,}]+", t):
             uses_wrangler = True
-            if "wranglerVersion" not in block(t.split("\n"), walk.line_of(t, m.start()) - 1):
+            if "wranglerVersion" not in step_block(t.split("\n"), walk.line_of(t, m.start()) - 1):
                 problems.append("%s:%d wrangler-action without wranglerVersion" % (r, walk.line_of(t, m.start())))
     if uses_wrangler:
         if problems:

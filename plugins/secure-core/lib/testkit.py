@@ -38,9 +38,21 @@ def tree(files, base=None):
     return base
 
 
+def clean_env():
+    """The environment for a fixture's git: every GIT_* variable removed. A git hook exports GIT_DIR and
+    GIT_INDEX_FILE, and a fixture's `git init` under them acts on the SUITE's repo (2026-11-01: a fixture
+    commit named "leak" landed on the suite's HEAD during a pre-commit run)."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
+def git(repo, *args):
+    """Run git on a fixture repo, isolated from any hook environment."""
+    return subprocess.run(["git", "-C", repo] + list(args), capture_output=True, text=True, check=False, env=clean_env())
+
+
 def git_init(repo):
     for c in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"], ["add", "-A"], ["commit", "-qm", "fixture"]):
-        subprocess.run(["git", "-C", repo] + c, capture_output=True, check=False)
+        git(repo, *c)
     return repo
 
 
@@ -51,13 +63,13 @@ def fake_key(kind, seed=7):
     return {
         "google": "AIza" + pick(al + "-_", 35),
         "stripe": "sk_" + "live_" + pick(al, 40),
-        "anthropic": "sk-" + "ant-api03-" + pick(al, 60),
+        "anthropic": "sk-" + "ant-api03-" + pick(al + "-_", 93) + "AA",  # the real shape, so gitleaks' anthropic rule fires
         "github": "gh" + "p_" + pick(al, 36),
     }[kind]
 
 
 def run(script, repo, *args):
-    r = subprocess.run([sys.executable, script, repo] + list(args), capture_output=True, text=True)
+    r = subprocess.run([sys.executable, script, repo] + list(args), capture_output=True, text=True, env=clean_env())
     try:
         checks = {c["id"]: c for c in json.loads(r.stdout)["checks"]}
     except (ValueError, KeyError):

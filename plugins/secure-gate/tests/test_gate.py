@@ -181,4 +181,80 @@ open(os.path.join(ci, "src", "b.ts"), "w").write("export const b = 2\n")
 r = subprocess.run([sys.executable, os.path.join(ci, ".secure-launch/secure-gate/scripts/gate.py"), os.path.join(outd, "findings.json"), "--repo", ci], capture_output=True, text=True)
 T.expect("...while a real source change after the ledger is still refused", r.returncode == 2 and "another commit" in r.stdout, r.stdout[-200:])
 
+# ---------- Phase 8 (bench known misses turned into fixes): binding, timestamps, empty ledger, default in-repo run ----------
+def edited(results, base=None, **changes):
+    """A ledger written as the orchestrator writes it, then edited: keys set to None are deleted."""
+    repo, p = write_ledger(results, base)
+    led = json.load(open(p))
+    for k, v in changes.items():
+        if v is None:
+            led.pop(k, None)
+        else:
+            led[k] = v
+    json.dump(led, open(p, "w"))
+    return repo, p
+
+
+def stamp(**delta):
+    return (datetime.datetime.now().astimezone() + datetime.timedelta(**delta)).isoformat(timespec="seconds")
+
+
+repo, p = edited([P], repo=None)
+r = gate(p, "--repo", repo)
+T.expect("binding: a ledger with no repo field is a gate error, never resolved to the working directory", r.returncode == 2 and "names no absolute repo" in r.stdout, r.stdout[-200:])
+r = subprocess.run([sys.executable, GATE, p, "--repo", "."], capture_output=True, text=True, cwd=repo)
+T.expect("binding: ...even when the gate runs inside that repo with --repo . (the CI and hook shape)", r.returncode == 2, r.stdout[-200:])
+repo, p = edited([P], repo=".")
+r = subprocess.run([sys.executable, GATE, p, "--repo", "."], capture_output=True, text=True, cwd=repo)
+T.expect("binding: repo '.' (a committed ledger that follows the checkout) is a gate error", r.returncode == 2 and "names no absolute repo" in r.stdout, r.stdout[-200:])
+repo, p = edited([P], repo="security/../")
+T.expect("binding: any relative repo field is a gate error", gate(p, "--repo", repo).returncode == 2)
+repo, p = write_ledger([P])
+led = json.load(open(p)); led["repo"] = os.path.realpath(repo) + "/"; json.dump(led, open(p, "w"))
+T.expect("binding: the same absolute repo with a trailing slash still passes", gate(p, "--repo", repo).returncode == 0)
+gr = T.git_init(T.tree({"src/a.ts": "export const a = 1\n", ".gitignore": "findings.json\n"}))
+repo, p = write_ledger([P], gr)
+led = json.load(open(p)); led["git"] = ledger.git_state(gr); json.dump(led, open(p, "w"))
+T.expect("binding: a git repo with the ledger bound to HEAD and tree passes", gate(p, "--repo", gr).returncode == 0)
+led = json.load(open(p)); del led["git"]; json.dump(led, open(p, "w"))
+r = gate(p, "--repo", gr)
+T.expect("binding: the git field dropped while --repo is a git repo is a gate error (which commit did it judge?)", r.returncode == 2 and "no git binding" in r.stdout, r.stdout[-200:])
+led = json.load(open(p)); led["git"] = "abc123"; json.dump(led, open(p, "w"))
+T.expect("binding: a git field that is not an object is a gate error, not a traceback", gate(p, "--repo", gr).returncode == 2)
+repo, p = write_ledger([P])
+T.expect("binding: a plain folder (no git) with no git field still passes", gate(p, "--repo", repo).returncode == 0)
+repo, p = edited([P], generated_at=stamp(days=30))
+r = gate(p, "--repo", repo)
+T.expect("timestamp: generated_at 30 days in the future is a gate error (never goes stale otherwise)", r.returncode == 2 and "in the future" in r.stdout, r.stdout[-200:])
+repo, p = edited([P], generated_at=stamp(minutes=31))
+T.expect("timestamp: 31 minutes in the future is a gate error", gate(p, "--repo", repo).returncode == 2)
+repo, p = edited([P], generated_at=stamp(minutes=31))
+T.expect("timestamp: ...and --max-age-hours 0 (age check off) does not switch the future check off", gate(p, "--repo", repo, "--max-age-hours", "0").returncode == 2)
+repo, p = edited([P], generated_at=stamp(minutes=2))
+T.expect("timestamp: two minutes ahead is clock skew and passes", gate(p, "--repo", repo).returncode == 0)
+repo, p = edited([P], generated_at=datetime.datetime.now().replace(microsecond=0).isoformat())
+r = gate(p, "--repo", repo)
+T.expect("timestamp: a naive generated_at (no zone) is a gate error with a message, not a TypeError traceback",
+         r.returncode == 2 and "no time zone" in r.stdout and "Traceback" not in r.stderr, (r.stdout + r.stderr)[-300:])
+repo, p = edited([P], generated_at=None)
+T.expect("timestamp: a missing generated_at is a gate error", gate(p, "--repo", repo).returncode == 2)
+repo, p = edited([P], generated_at=stamp(hours=-7))
+T.expect("timestamp: seven hours old still refuses (exit 1) under the 6 h default", gate(p, "--repo", repo).returncode == 1)
+repo = T.tree({"security/gate.json": json.dumps({"test_command": "echo RAN-THE-TESTS"})})
+repo, p = write_ledger([], repo)
+r = gate(p, "--repo", repo, "--tests-from", "security/gate.json")
+T.expect("empty ledger: refuses BEFORE the test command, so a passing test never stands in for a scan",
+         r.returncode == 1 and "nothing measured" in r.stdout and "RAN-THE-TESTS" not in r.stdout, r.stdout[-300:])
+repo, p = write_ledger([P], repo)
+T.expect("empty ledger: ...while a measured ledger plus the passing test command ships", gate(p, "--repo", repo, "--tests-from", "security/gate.json").returncode == 0)
+hono = T.git_init(T.tree({"package.json": json.dumps({"dependencies": {"hono": "4.6.0"}}),
+                          "src/index.ts": "import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/api/health', (c) => c.text('ok'))\nexport default app\n"}))
+r = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "secure-core", "scripts", "secure_launch.py"), hono, "--only", "secure-app"], capture_output=True, text=True)
+r = gate(os.path.join(hono, "security", "findings.json"), "--repo", hono)
+T.expect("default run: the orchestrator's own output in REPO/security (untracked) is not 'another working tree'; the skill's gate-by-hand step ships",
+         r.returncode == 0, r.stdout[-300:])
+open(os.path.join(hono, "src", "debug.ts"), "w").write("app.get('/api/debug/env', (c) => c.json(Object.keys(c.env)))\n")
+r = gate(os.path.join(hono, "security", "findings.json"), "--repo", hono)
+T.expect("default run: ...and a source file added after that run is still refused", r.returncode == 2 and "another commit" in r.stdout, r.stdout[-200:])
+
 T.finish()

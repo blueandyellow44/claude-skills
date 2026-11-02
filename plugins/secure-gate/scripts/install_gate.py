@@ -26,7 +26,7 @@ import ledger  # noqa: E402
 
 GATE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(GATE)
-PLUGINS = ["secure-core", "secure-secrets", "secure-supply-chain", "secure-app", "secure-platform", "secure-gate"]
+PLUGINS = ["secure-core", "secure-secrets", "secure-supply-chain", "secure-app", "secure-ai", "secure-platform", "secure-gate"]
 SKIP = shutil.ignore_patterns("__pycache__", "*.pyc", "testkit.py")
 
 

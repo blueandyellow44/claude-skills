@@ -50,6 +50,8 @@ The guard, its tests, the trap results, and the before/after diff of real ingest
 
 Then the project's own guard tests (in the reference app, the safeFetch vitest files).
 
+`check_fetch.py` known-bad (`bash <base>/../../tests/run_tests.sh`): `fetch(c.req.query('url'))`, a destructured `{ url }` from the body, undici `request(target)` with the target from the query, a body URL handed to `importFeed()` in another file that fetches it raw, `const { searchParams } = new URL(req.url)` feeding `fetch(searchParams.get('image'))`, a caller-chosen host in `` `https://${host}/health` ``, `fetch(request)` where `request = new Request(hook.url)`, and a raw `fetch(profile.avatarUrl)` beside a `safeFetch` function it does not call all FAIL. Known-good: a fixed host with the request value in the query string, `safeFetch(url)`, a request key into a constant map of owner-written URLs (`SOURCES[key].url`), a React hook that fetches in the visitor's browser, and the incoming `fetch(request)` proxy all PASS; a raw site in a repo that installs its guard as a global undici dispatcher is UNKNOWN. The safeFetch decoy resolves DNS once and then lets `fetch` resolve again (a rebinding window); the check reads it as a guard because the pattern is present, and the procedure above (step 2, custom `lookup` on connect) is what closes the window.
+
 ## Rules
 
 1. Never fetch a real internal address to "check" it; the trap server stands in.
